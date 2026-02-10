@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Add application – Job Tracker</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 500px; margin: 0 auto; padding: 1rem; }
+    h1 { margin-top: 0; }
+    label { display: block; margin-top: 0.75rem; }
+    input, select, textarea { width: 100%; padding: 0.4rem; box-sizing: border-box; }
+    .error { background: #ffebee; color: #c62828; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #1565c0; }
+    a { color: #1976d2; margin-left: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Add job application</h1>
+  <p th:if="${error}" class="error" th:text="${error}">Error</p>
+
+  <form method="post" action="/add" th:object="${application}">
+    <!--<label>Idempotency key (e.g. company_position_YYYY-MM-DD) *</label>
+    <input type="text" th:field="*{requestKey}" required placeholder="acme_senior_engineer_2026-01-26"/>
+-->
+    <label>Company name *</label>
+    <input type="text" th:field="*{companyName}" required/>
+
+    <label>Position title *</label>
+    <input type="text" th:field="*{positionTitle}" required/>
+
+    <label>Date applied *</label>
+    <input type="date" th:field="*{dateApplied}" required/>
+
+    <label>Status</label>
+    <select th:field="*{status}">
+      <option value="APPLIED">Applied</option>
+      <option value="INTERVIEWING">Interviewing</option>
+      <option value="OFFER">Offer</option>
+      <option value="REJECTED">Rejected</option>
+    </select>
+
+    <label>Source (e.g. LinkedIn, company site)</label>
+    <input type="text" th:field="*{source}" placeholder="LinkedIn"/>
+
+    <label>Notes</label>
+    <textarea th:field="*{notes}" rows="3"></textarea>
+
+    <button type="submit">Save</button>
+    <a href="/">Cancel</a>
+  </form>
+</body>
+</html>

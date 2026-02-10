@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>View application – Job Tracker</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 1rem; }
+    h1 { margin-top: 0; }
+    .error { background: #ffebee; color: #c62828; padding: 0.5rem; border-radius: 4px; }
+    dl { display: grid; grid-template-columns: 140px 1fr; gap: 0.25rem 1rem; }
+    dt { font-weight: 600; }
+    a { color: #1976d2; }
+  </style>
+</head>
+<body>
+  <h1>Application details</h1>
+  <p th:if="${error}" class="error" th:text="${error}">Error</p>
+
+  <div th:if="${application}">
+    <dl>
+      <dt>Company</dt>
+      <dd th:text="${application.companyName}">–</dd>
+      <dt>Position</dt>
+      <dd th:text="${application.positionTitle}">–</dd>
+      <dt>Date applied</dt>
+      <dd th:text="${application.dateApplied}">–</dd>
+      <dt>Status</dt>
+      <dd th:text="${application.status}">–</dd>
+      <dt>Source</dt>
+      <dd th:text="${application.source}">–</dd>
+      <dt>Notes</dt>
+      <dd th:text="${application.notes} ?: '–'">–</dd>
+      <dt>Request key</dt>
+      <dd th:text="${application.requestKey}">–</dd>
+    </dl>
+  </div>
+
+  <p><a href="/">← Back to list</a></p>
+</body>
+</html>
