@@ -1,16 +1,17 @@
 package com.kevin.jobtracker.service;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.kevin.jobtracker.entity.DeadLetterEvent;
 import com.kevin.jobtracker.entity.JobApplication;
 import com.kevin.jobtracker.metrics.ApplicationMetrics;
 import com.kevin.jobtracker.model.JobApplicationRequest;
 import com.kevin.jobtracker.repository.JobApplicationRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 public class JobApplicationService {
@@ -30,17 +31,15 @@ public class JobApplicationService {
 	@Transactional
 	public JobApplication submit(JobApplicationRequest req, String clientIp) {
 		String key = req.getRequestKey();
-		System.out.println(req.getCompanyName() + " " + req.getRequestKey());
-		System.out.println("HIIIIIII: " + key);
 		try {
-			if (key == null || key.isBlank())
-				throw new IllegalArgumentException("Request key (idempotency key) required");
 			if (req.getCompanyName() == null || req.getCompanyName().isBlank())
 				throw new IllegalArgumentException("Company name required");
 			if (req.getPositionTitle() == null || req.getPositionTitle().isBlank())
 				throw new IllegalArgumentException("Position title required");
 			if (req.getDateApplied() == null)
 				throw new IllegalArgumentException("Date applied required");
+			key = resolveRequestKey(req);
+			req.setRequestKey(key);
 
 			Instant now = Instant.now();
 			Optional<JobApplication> existingOpt = applicationRepository.findByRequestKey(key);
@@ -97,6 +96,10 @@ public class JobApplicationService {
 		return applicationRepository.findByRequestKey(requestKey);
 	}
 
+	public Optional<JobApplication> getById(String id) {
+		return applicationRepository.findById(id);
+	}
+
 	public List<JobApplication> listAll() {
 		return applicationRepository.findAllByOrderByDateAppliedDescCreatedAtDesc();
 	}
@@ -115,5 +118,19 @@ public class JobApplicationService {
 		existing.setStatus(req.getStatus() != null ? req.getStatus() : "APPLIED");
 		existing.setNotes(req.getNotes());
 		existing.setSource(req.getSource());
+	}
+
+	private static String resolveRequestKey(JobApplicationRequest req) {
+		String providedKey = req.getRequestKey();
+		if (providedKey != null && !providedKey.isBlank()) {
+			return providedKey.trim();
+		}
+		return slug(req.getCompanyName()) + "__" + slug(req.getPositionTitle()) + "__" + req.getDateApplied();
+	}
+
+	private static String slug(String value) {
+		String normalized = value.trim().toLowerCase().replaceAll("[^a-z0-9]+", "-");
+		normalized = normalized.replaceAll("^-+|-+$", "");
+		return normalized.isBlank() ? "na" : normalized;
 	}
 }

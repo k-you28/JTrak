@@ -27,12 +27,7 @@ public class ApplicationsController {
 			HttpServletRequest httpRequest
 	) {
 		String clientIp = extractClientIp(httpRequest);
-
-		request.setRequestKey(request.getCompanyName() + "|" +
-				request.getPositionTitle() + "|" +
-				request.getDateApplied());
-		System.out.println("CONTROLLER: " + request.getRequestKey());
-        JobApplication created = applicationService.submit(request, clientIp);
+		JobApplication created = applicationService.submit(request, clientIp);
 		return ResponseEntity.status(HttpStatus.CREATED).body(created);
 	}
 

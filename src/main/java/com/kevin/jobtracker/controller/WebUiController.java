@@ -9,6 +9,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -52,13 +53,46 @@ public class WebUiController {
 	}
 
 	@GetMapping("/view")
-	public String view(@RequestParam String requestKey, Model model) {
+	public String view(@RequestParam(required = false) String id,
+	                  @RequestParam(required = false) String requestKey,
+	                  Model model) {
+		if (id != null && !id.isBlank()) {
+			return renderById(id, model);
+		}
+		if (requestKey != null && !requestKey.isBlank()) {
+			return renderByRequestKey(requestKey, model);
+		}
+		model.addAttribute("error", "Application not found");
+		return "view";
+	}
+
+	@GetMapping("/view/{id}")
+	public String viewById(@PathVariable String id, Model model) {
+		return renderById(id, model);
+	}
+
+	@GetMapping("/view/key/{requestKey}")
+	public String viewByRequestKey(@PathVariable String requestKey, Model model) {
+		return renderByRequestKey(requestKey, model);
+	}
+
+	private String renderById(String id, Model model) {
+		Optional<JobApplication> app = applicationService.getById(id);
+		if (app.isEmpty()) {
+			model.addAttribute("error", "Application not found");
+			return "view";
+		}
+		model.addAttribute("jobApplication", app.get());
+		return "view";
+	}
+
+	private String renderByRequestKey(String requestKey, Model model) {
 		Optional<JobApplication> app = applicationService.getByRequestKey(requestKey);
 		if (app.isEmpty()) {
 			model.addAttribute("error", "Application not found");
 			return "view";
 		}
-		model.addAttribute("application", app.get());
+		model.addAttribute("jobApplication", app.get());
 		return "view";
 	}
 }

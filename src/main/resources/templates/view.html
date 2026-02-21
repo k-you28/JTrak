@@ -20,30 +20,33 @@
 
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-    <section class="panel" th:if="${application}">
+    <section class="panel" th:if="${jobApplication}">
       <dl class="detail-grid">
         <dt>Company</dt>
-        <dd th:text="${application.companyName}">-</dd>
+        <dd th:text="${jobApplication.companyName} ?: '-'">-</dd>
 
         <dt>Position</dt>
-        <dd th:text="${application.positionTitle}">-</dd>
+        <dd th:text="${jobApplication.positionTitle} ?: '-'">-</dd>
 
         <dt>Date Applied</dt>
-        <dd th:text="${application.dateApplied}">-</dd>
-
+        <dd th:text="${jobApplication.dateApplied} ?: '-'">-</dd>
         <dt>Status</dt>
         <dd>
-          <span class="status-badge" th:classappend="' status-' + ${#strings.toLowerCase(application.status)}" th:text="${application.status}">Status</span>
+          <span class="status-badge"
+                th:classappend="${jobApplication.status != null} ? ' status-' + ${#strings.toLowerCase(jobApplication.status)} : ' status-applied'"
+                th:text="${jobApplication.status} ?: 'APPLIED'">
+            Status
+          </span>
         </dd>
 
         <dt>Source</dt>
-        <dd th:text="${application.source} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.source} ?: '-'">-</dd>
 
         <dt>Notes</dt>
-        <dd th:text="${application.notes} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.notes} ?: '-'">-</dd>
 
         <dt>Request Key</dt>
-        <dd th:text="${application.requestKey}">-</dd>
+        <dd th:text="${jobApplication.requestKey} ?: '-'">-</dd>
       </dl>
     </section>
 

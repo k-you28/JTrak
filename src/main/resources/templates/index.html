@@ -49,7 +49,12 @@
               <span class="status-badge" th:classappend="' status-' + ${#strings.toLowerCase(app.status)}" th:text="${app.status}">Status</span>
             </td>
             <td th:text="${app.source} ?: 'Direct'">Source</td>
-            <td><a class="link" th:href="@{/view(requestKey=${app.requestKey})}">Open</a></td>
+            <td>
+              <a class="link"
+                 th:href="${app.id != null and !#strings.isEmpty(app.id)} ? @{/view/{id}(id=${app.id})} : @{/view/key/{requestKey}(requestKey=${app.requestKey})}">
+                Open
+              </a>
+            </td>
           </tr>
           <tr th:if="${#lists.isEmpty(applications)}">
             <td colspan="6" class="empty-state">No applications yet. Add your first role to start tracking progress.</td>
