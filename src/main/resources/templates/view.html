@@ -3,39 +3,53 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>View application – Job Tracker</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 1rem; }
-    h1 { margin-top: 0; }
-    .error { background: #ffebee; color: #c62828; padding: 0.5rem; border-radius: 4px; }
-    dl { display: grid; grid-template-columns: 140px 1fr; gap: 0.25rem 1rem; }
-    dt { font-weight: 600; }
-    a { color: #1976d2; }
-  </style>
+  <title>View Application - Job Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/css/app.css"/>
 </head>
 <body>
-  <h1>Application details</h1>
-  <p th:if="${error}" class="error" th:text="${error}">Error</p>
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <h1>Application Details</h1>
+        <p>Everything logged for this role in one place.</p>
+      </div>
+    </section>
 
-  <div th:if="${application}">
-    <dl>
-      <dt>Company</dt>
-      <dd th:text="${application.companyName}">–</dd>
-      <dt>Position</dt>
-      <dd th:text="${application.positionTitle}">–</dd>
-      <dt>Date applied</dt>
-      <dd th:text="${application.dateApplied}">–</dd>
-      <dt>Status</dt>
-      <dd th:text="${application.status}">–</dd>
-      <dt>Source</dt>
-      <dd th:text="${application.source}">–</dd>
-      <dt>Notes</dt>
-      <dd th:text="${application.notes} ?: '–'">–</dd>
-      <dt>Request key</dt>
-      <dd th:text="${application.requestKey}">–</dd>
-    </dl>
-  </div>
+    <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-  <p><a href="/">← Back to list</a></p>
+    <section class="panel" th:if="${application}">
+      <dl class="detail-grid">
+        <dt>Company</dt>
+        <dd th:text="${application.companyName}">-</dd>
+
+        <dt>Position</dt>
+        <dd th:text="${application.positionTitle}">-</dd>
+
+        <dt>Date Applied</dt>
+        <dd th:text="${application.dateApplied}">-</dd>
+
+        <dt>Status</dt>
+        <dd>
+          <span class="status-badge" th:classappend="' status-' + ${#strings.toLowerCase(application.status)}" th:text="${application.status}">Status</span>
+        </dd>
+
+        <dt>Source</dt>
+        <dd th:text="${application.source} ?: '-'">-</dd>
+
+        <dt>Notes</dt>
+        <dd th:text="${application.notes} ?: '-'">-</dd>
+
+        <dt>Request Key</dt>
+        <dd th:text="${application.requestKey}">-</dd>
+      </dl>
+    </section>
+
+    <div class="toolbar" style="margin-top: 0.9rem;">
+      <a href="/" class="btn btn-secondary">Back To List</a>
+    </div>
+  </main>
 </body>
 </html>

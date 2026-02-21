@@ -4,48 +4,59 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Job Application Tracker</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; }
-    h1 { margin-top: 0; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
-    th { background: #f5f5f5; }
-    .message { background: #e8f5e9; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; }
-    a { color: #1976d2; }
-    .btn { display: inline-block; padding: 0.5rem 1rem; background: #1976d2; color: white; text-decoration: none; border-radius: 4px; margin-bottom: 1rem; }
-    .btn:hover { background: #1565c0; }
-    .empty { color: #666; font-style: italic; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/css/app.css"/>
 </head>
 <body>
-  <h1>Job Application Tracker</h1>
-  <p th:if="${message}" class="message" th:text="${message}">Message</p>
-  <a href="/add" class="btn">+ Add application</a>
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <h1>Job Application Tracker</h1>
+        <p>Keep every opportunity organized from first application to final outcome.</p>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Total Applications</span>
+        <span class="kpi-value" th:text="${#lists.size(applications)}">0</span>
+      </div>
+    </section>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Company</th>
-        <th>Position</th>
-        <th>Date applied</th>
-        <th>Status</th>
-        <th>Source</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr th:each="app : ${applications}">
-        <td th:text="${app.companyName}">Company</td>
-        <td th:text="${app.positionTitle}">Position</td>
-        <td th:text="${app.dateApplied}">Date</td>
-        <td th:text="${app.status}">Status</td>
-        <td th:text="${app.source}">Source</td>
-        <td><a th:href="@{/view(requestKey=${app.requestKey})}">View</a></td>
-      </tr>
-      <tr th:if="${#lists.isEmpty(applications)}">
-        <td colspan="6" class="empty">No applications yet. Add one above.</td>
-      </tr>
-    </tbody>
-  </table>
+    <p th:if="${message}" class="notice success" th:text="${message}">Message</p>
+
+    <div class="toolbar">
+      <a href="/add" class="btn btn-primary">+ Add Application</a>
+    </div>
+
+    <section class="panel table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Position</th>
+            <th>Date Applied</th>
+            <th>Status</th>
+            <th>Source</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="app : ${applications}">
+            <td th:text="${app.companyName}">Company</td>
+            <td th:text="${app.positionTitle}">Position</td>
+            <td th:text="${app.dateApplied}">Date</td>
+            <td>
+              <span class="status-badge" th:classappend="' status-' + ${#strings.toLowerCase(app.status)}" th:text="${app.status}">Status</span>
+            </td>
+            <td th:text="${app.source} ?: 'Direct'">Source</td>
+            <td><a class="link" th:href="@{/view(requestKey=${app.requestKey})}">Open</a></td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(applications)}">
+            <td colspan="6" class="empty-state">No applications yet. Add your first role to start tracking progress.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
 </body>
 </html>

@@ -31,7 +31,8 @@ public class ApplicationsController {
 		request.setRequestKey(request.getCompanyName() + "|" +
 				request.getPositionTitle() + "|" +
 				request.getDateApplied());
-		JobApplication created = applicationService.submit(request, clientIp);
+		System.out.println("CONTROLLER: " + request.getRequestKey());
+        JobApplication created = applicationService.submit(request, clientIp);
 		return ResponseEntity.status(HttpStatus.CREATED).body(created);
 	}
 

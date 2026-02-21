@@ -30,6 +30,7 @@ public class JobApplicationService {
 	@Transactional
 	public JobApplication submit(JobApplicationRequest req, String clientIp) {
 		String key = req.getRequestKey();
+		System.out.println(req.getCompanyName() + " " + req.getRequestKey());
 		System.out.println("HIIIIIII: " + key);
 		try {
 			if (key == null || key.isBlank())
