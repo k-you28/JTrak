@@ -1,0 +1,10 @@
+.git
+.gitignore
+.gradle
+build
+.idea
+.DS_Store
+*.iml
+data
+load
+src/test

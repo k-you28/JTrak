@@ -21,10 +21,11 @@ public class ApplicationsController {
 
 	@PostMapping
 	public ResponseEntity<JobApplication> submit(
-			@ModelAttribute JobApplicationRequest request,
+			@RequestBody JobApplicationRequest request,
 			HttpServletRequest httpRequest
 	) {
 		String clientIp = extractClientIp(httpRequest);
+		//System.out.println("KY TEST" + request.getCompanyName());
 		JobApplication created = applicationService.submit(request, clientIp);
 		return ResponseEntity.status(HttpStatus.CREATED).body(created);
 	}
