@@ -92,6 +92,18 @@ public class JobApplicationService {
 		}
 	}
 
+	@Transactional
+	public void deleteById(String id) {
+		if (id == null || id.isBlank()) {
+			throw new IllegalArgumentException("Application id required");
+		}
+		if (!applicationRepository.existsById(id)) {
+			throw new IllegalArgumentException("Application not found");
+		}
+		applicationRepository.deleteById(id);
+	}
+
+
 	public Optional<JobApplication> getByRequestKey(String requestKey) {
 		return applicationRepository.findByRequestKey(requestKey);
 	}

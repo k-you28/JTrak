@@ -32,6 +32,7 @@
       <table>
         <thead>
           <tr>
+            <th></th>
             <th>Company</th>
             <th>Position</th>
             <th>Date Applied</th>
@@ -42,6 +43,12 @@
         </thead>
         <tbody>
           <tr th:each="app : ${applications}">
+            <td>
+              <form th:action="@{/delete/{id}(id=${app.id})}"
+                    method="post">
+                <button type="submit">-</button>
+              </form>
+            </td>
             <td th:text="${app.companyName}">Company</td>
             <td th:text="${app.positionTitle}">Position</td>
             <td th:text="${app.dateApplied}">Date</td>
@@ -57,7 +64,7 @@
             </td>
           </tr>
           <tr th:if="${#lists.isEmpty(applications)}">
-            <td colspan="6" class="empty-state">No applications yet. Add your first role to start tracking progress.</td>
+            <td colspan="7" class="empty-state">No applications yet. Add your first role to start tracking progress.</td>
           </tr>
         </tbody>
       </table>

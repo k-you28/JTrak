@@ -52,6 +52,17 @@ public class WebUiController {
 		return "redirect:/";
 	}
 
+	@PostMapping("/delete/{id}")
+	public String delete(@PathVariable String id, RedirectAttributes redirectAttributes) {
+		try {
+			applicationService.deleteById(id);
+			redirectAttributes.addFlashAttribute("message", "Application deleted.");
+		} catch (Exception e) {
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:/";
+	}
+
 	@GetMapping("/view")
 	public String view(@RequestParam(required = false) String id,
 	                  @RequestParam(required = false) String requestKey,
