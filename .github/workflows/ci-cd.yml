@@ -85,11 +85,18 @@ jobs:
   deploy:
     name: Optional Deploy (Webhook)
     needs: publish-image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DEPLOY_WEBHOOK_URL != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
 
     steps:
+      - name: Skip deploy (no webhook configured)
+        if: env.DEPLOY_WEBHOOK_URL == ''
+        run: echo "DEPLOY_WEBHOOK_URL is not set. Skipping deployment."
+
       - name: Trigger deployment webhook
-        run: curl -fsSL -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}"
+        if: env.DEPLOY_WEBHOOK_URL != ''
+        run: curl -fsSL -X POST "$DEPLOY_WEBHOOK_URL"
