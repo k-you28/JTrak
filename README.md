@@ -36,6 +36,41 @@ Optional JVM tuning:
 docker run --rm -p 8081:8081 -e JAVA_OPTS="-Xms256m -Xmx512m" -v "$(pwd)/data:/app/data" job-application-tracker:latest
 ```
 
+## CI/CD (GitHub Actions)
+
+This repo includes a workflow at:
+
+- `.github/workflows/ci-cd.yml`
+
+What it does:
+
+1. **CI on pull requests to `main`**
+   - Runs `./gradlew clean test`
+   - Uploads test reports as artifacts
+2. **CD on pushes to `main`**
+   - Builds Docker image from `Dockerfile`
+   - Pushes image to GitHub Container Registry (GHCR):
+     - `ghcr.io/<owner>/<repo>:latest`
+     - `ghcr.io/<owner>/<repo>:sha-<commit>`
+3. **Optional deployment step**
+   - If you define `DEPLOY_WEBHOOK_URL` secret, workflow calls it after image publish
+
+### One-time setup
+
+1. Push this repo to GitHub.
+2. In GitHub repo settings:
+   - `Settings` -> `Actions` -> `General`:
+     - Ensure workflows are allowed.
+   - `Settings` -> `Secrets and variables` -> `Actions`:
+     - Add `DEPLOY_WEBHOOK_URL` only if your hosting provider gives you a deploy webhook (Render/Railway/etc.).
+3. In package settings (if needed), make sure Actions can publish to GHCR for this repo.
+
+### How to use
+
+- Open a PR to `main` -> CI test job runs automatically.
+- Merge to `main` -> tests run, then Docker image publishes to GHCR.
+- Trigger manually any time via `Actions` -> `CI-CD` -> `Run workflow`.
+
 ## Web UI (no API key)
 
 - **http://localhost:8081/** – List all applications  
