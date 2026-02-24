@@ -38,9 +38,10 @@ docker run --rm -p 8081:8081 -e JAVA_OPTS="-Xms256m -Xmx512m" -v "$(pwd)/data:/a
 
 ## CI/CD (GitHub Actions)
 
-This repo includes a workflow at:
+This repo includes two workflows:
 
-- `.github/workflows/ci-cd.yml`
+- `.github/workflows/test.yml` (CI)
+- `.github/workflows/deploy.yml` (CD)
 
 What it does:
 
@@ -53,7 +54,7 @@ What it does:
      - `ghcr.io/<owner>/<repo>:latest`
      - `ghcr.io/<owner>/<repo>:sha-<commit>`
 3. **Optional deployment step**
-   - If you define `DEPLOY_WEBHOOK_URL` secret, workflow calls it after image publish
+   - If you define `DEPLOY_WEBHOOK_URL` secret, CD workflow calls it after image publish
 
 ### One-time setup
 
@@ -69,7 +70,7 @@ What it does:
 
 - Open a PR to `main` -> CI test job runs automatically.
 - Merge to `main` -> tests run, then Docker image publishes to GHCR.
-- Trigger manually any time via `Actions` -> `CI-CD` -> `Run workflow`.
+- Trigger manually any time via `Actions` -> `CI Test` or `CD Deploy` -> `Run workflow`.
 
 ## Web UI (no API key)
 

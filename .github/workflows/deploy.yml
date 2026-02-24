@@ -1,60 +1,35 @@
-name: CI-CD
+name: CD Deploy
 
 on:
-  pull_request:
-    branches: ["main"]
-  push:
-    branches: ["main"]
+  workflow_run:
+    workflows: ["CI Test"]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
-  group: ci-cd-${{ github.ref }}
+  group: cd-deploy-main
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
-      - name: Run unit + integration tests
-        run: ./gradlew --no-daemon clean test
-
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: |
-            build/reports/tests/test
-            build/test-results/test
-
-  publish-image:
-    name: Build and Publish Docker Image
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  publish-and-deploy:
+    name: Publish Image and Optional Deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    env:
+      DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
 
     steps:
-      - name: Checkout
+      - name: Checkout (workflow_run SHA)
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Checkout (manual)
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry
@@ -82,17 +57,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  deploy:
-    name: Optional Deploy (Webhook)
-    needs: publish-image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-
-    steps:
       - name: Skip deploy (no webhook configured)
         if: env.DEPLOY_WEBHOOK_URL == ''
         run: echo "DEPLOY_WEBHOOK_URL is not set. Skipping deployment."
