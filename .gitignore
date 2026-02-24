@@ -1,0 +1,14 @@
+# Gradle
+.gradle/
+build/
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
+
+# Local runtime data
+data/
+
+# Local env/logs
+*.log

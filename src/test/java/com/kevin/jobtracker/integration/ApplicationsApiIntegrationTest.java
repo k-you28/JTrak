@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import java.util.Map;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -61,16 +62,20 @@ class ApplicationsApiIntegrationTest {
 
     @Test
     void createAndFetchByRequestKeyWorksWithApiKey() throws Exception {
+        String payload = objectMapper.writeValueAsString(Map.of(
+            "requestKey", "acme-se-2026-02-20",
+            "companyName", "Acme",
+            "positionTitle", "Software Engineer",
+            "dateApplied", "2026-02-20",
+            "status", "APPLIED",
+            "source", "LinkedIn",
+            "notes", "first touch"
+        ));
+
         mockMvc.perform(post("/api/applications")
                 .header("X-API-Key", apiKey)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("requestKey", "acme-se-2026-02-20")
-                .param("companyName", "Acme")
-                .param("positionTitle", "Software Engineer")
-                .param("dateApplied", "2026-02-20")
-                .param("status", "APPLIED")
-                .param("source", "LinkedIn")
-                .param("notes", "first touch"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.requestKey").value("acme-se-2026-02-20"));
 
@@ -83,25 +88,25 @@ class ApplicationsApiIntegrationTest {
 
     @Test
     void sameRequestKeyAndSameContentReturnsSameRecordId() throws Exception {
+        String payload = objectMapper.writeValueAsString(Map.of(
+            "requestKey", "same-key",
+            "companyName", "Acme",
+            "positionTitle", "Software Engineer",
+            "dateApplied", "2026-02-20",
+            "status", "APPLIED"
+        ));
+
         MvcResult first = mockMvc.perform(post("/api/applications")
                 .header("X-API-Key", apiKey)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("requestKey", "same-key")
-                .param("companyName", "Acme")
-                .param("positionTitle", "Software Engineer")
-                .param("dateApplied", "2026-02-20")
-                .param("status", "APPLIED"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
             .andExpect(status().isCreated())
             .andReturn();
 
         MvcResult second = mockMvc.perform(post("/api/applications")
                 .header("X-API-Key", apiKey)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("requestKey", "same-key")
-                .param("companyName", "Acme")
-                .param("positionTitle", "Software Engineer")
-                .param("dateApplied", "2026-02-20")
-                .param("status", "APPLIED"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
             .andExpect(status().isCreated())
             .andReturn();
 
