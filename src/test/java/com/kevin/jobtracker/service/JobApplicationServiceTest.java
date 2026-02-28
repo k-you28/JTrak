@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -161,6 +162,15 @@ class JobApplicationServiceTest {
         ArgumentCaptor<JobApplication> captor = ArgumentCaptor.forClass(JobApplication.class);
         verify(applicationRepository).save(captor.capture());
         assertThat(captor.getValue().getRequestKey()).isEqualTo("custom-key");
+    }
+
+    @Test
+    void listAllReturnsEmptyListWhenRepositoryReturnsNull() {
+        when(applicationRepository.findAllByOrderByDateAppliedDescCreatedAtDesc()).thenReturn(null);
+
+        List<JobApplication> result = service.listAll();
+
+        assertThat(result).isNotNull().isEmpty();
     }
 
     private static JobApplicationRequest baseRequest() {

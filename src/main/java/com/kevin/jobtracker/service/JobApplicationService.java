@@ -1,6 +1,7 @@
 package com.kevin.jobtracker.service;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -113,7 +114,8 @@ public class JobApplicationService {
 	}
 
 	public List<JobApplication> listAll() {
-		return applicationRepository.findAllByOrderByDateAppliedDescCreatedAtDesc();
+		List<JobApplication> applications = applicationRepository.findAllByOrderByDateAppliedDescCreatedAtDesc();
+		return applications != null ? applications : Collections.emptyList();
 	}
 
 	private static boolean isSameContent(JobApplication existing, JobApplicationRequest req) {

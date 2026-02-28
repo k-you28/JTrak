@@ -18,7 +18,7 @@
       </div>
       <div class="kpi">
         <span class="kpi-label">Total Applications</span>
-        <span class="kpi-value" th:text="${#lists.size(applications)}">0</span>
+        <span class="kpi-value" th:text="${applications != null ? #lists.size(applications) : 0}">0</span>
       </div>
     </section>
 
@@ -63,7 +63,7 @@
               </a>
             </td>
           </tr>
-          <tr th:if="${#lists.isEmpty(applications)}">
+          <tr th:if="${applications == null or #lists.isEmpty(applications)}">
             <td colspan="7" class="empty-state">No applications yet. Add your first role to start tracking progress.</td>
           </tr>
         </tbody>
