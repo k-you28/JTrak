@@ -4,6 +4,7 @@ import com.kevin.jobtracker.entity.JobApplication;
 import com.kevin.jobtracker.model.JobApplicationRequest;
 import com.kevin.jobtracker.service.JobApplicationService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,14 +27,16 @@ public class WebUiController {
 	}
 
 	@GetMapping("/")
-	public String home(Model model) {
+	public String home(Model model, HttpServletResponse response) {
+		disableCache(response);
 		List<JobApplication> applications = applicationService.listAll();
 		model.addAttribute("applications", applications);
 		return "index";
 	}
 
 	@GetMapping("/add")
-	public String addForm(Model model) {
+	public String addForm(Model model, HttpServletResponse response) {
+		disableCache(response);
 		model.addAttribute("application", new JobApplicationRequest());
 		return "add";
 	}
@@ -66,7 +69,9 @@ public class WebUiController {
 	@GetMapping("/view")
 	public String view(@RequestParam(required = false) String id,
 	                  @RequestParam(required = false) String requestKey,
-	                  Model model) {
+	                  Model model,
+	                  HttpServletResponse response) {
+		disableCache(response);
 		if (id != null && !id.isBlank()) {
 			return renderById(id, model);
 		}
@@ -78,13 +83,21 @@ public class WebUiController {
 	}
 
 	@GetMapping("/view/{id}")
-	public String viewById(@PathVariable String id, Model model) {
+	public String viewById(@PathVariable String id, Model model, HttpServletResponse response) {
+		disableCache(response);
 		return renderById(id, model);
 	}
 
 	@GetMapping("/view/key/{requestKey}")
-	public String viewByRequestKey(@PathVariable String requestKey, Model model) {
+	public String viewByRequestKey(@PathVariable String requestKey, Model model, HttpServletResponse response) {
+		disableCache(response);
 		return renderByRequestKey(requestKey, model);
+	}
+
+	private static void disableCache(HttpServletResponse response) {
+		response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+		response.setHeader("Pragma", "no-cache");
+		response.setDateHeader("Expires", 0);
 	}
 
 	private String renderById(String id, Model model) {
