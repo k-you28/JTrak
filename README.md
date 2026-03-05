@@ -72,13 +72,15 @@ What it does:
 - Merge to `main` -> tests run, then Docker image publishes to GHCR.
 - Trigger manually any time via `Actions` -> `CI Test` or `CD Deploy` -> `Run workflow`.
 
-## Web UI (no API key)
+## Web UI (account required)
 
-- **http://localhost:8081/** – List all applications  
-- **http://localhost:8081/add** – Add an application  
-- **http://localhost:8081/view?requestKey=...** – View one application  
+- **http://localhost:8081/register** – Create account
+- **http://localhost:8081/login** – Sign in
+- **http://localhost:8081/** – List all applications (after login)
+- **http://localhost:8081/add** – Add an application (after login)
+- **http://localhost:8081/view?requestKey=...** – View one application (after login)
 
-The UI talks to the service directly (no API key). For production you’d add auth to the UI.
+The UI uses Spring Security form login with session auth.
 
 ## REST API (API key required)
 

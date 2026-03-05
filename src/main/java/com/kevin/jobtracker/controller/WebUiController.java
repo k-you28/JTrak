@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Optional;
+import java.security.Principal;
 
 @Controller
 public class WebUiController {
@@ -24,6 +25,11 @@ public class WebUiController {
 
 	public WebUiController(JobApplicationService applicationService) {
 		this.applicationService = applicationService;
+	}
+
+	@ModelAttribute("currentUser")
+	public String currentUser(Principal principal) {
+		return principal != null ? principal.getName() : "";
 	}
 
 	@GetMapping("/")

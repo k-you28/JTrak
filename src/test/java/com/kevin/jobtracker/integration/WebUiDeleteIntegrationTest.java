@@ -1,6 +1,8 @@
 package com.kevin.jobtracker.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,6 +42,7 @@ class WebUiDeleteIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "student@example.com")
     void deleteByIdRemovesSelectedRow() throws Exception {
         JobApplication saved = jobApplicationRepository.save(new JobApplication(
             "acme__se__2026-02-20",
@@ -51,10 +55,37 @@ class WebUiDeleteIntegrationTest {
             "127.0.0.1"
         ));
 
-        mockMvc.perform(post("/delete/{id}", saved.getId()))
+        mockMvc.perform(post("/delete/{id}", saved.getId()).with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/"));
 
         assertThat(jobApplicationRepository.findById(saved.getId())).isEmpty();
+    }
+
+    @Test
+    void viewRedirectsToLoginWhenAnonymous() throws Exception {
+        mockMvc.perform(get("/"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    @WithMockUser(username = "student@example.com")
+    void deleteRejectsWhenCsrfMissing() throws Exception {
+        JobApplication saved = jobApplicationRepository.save(new JobApplication(
+            "acme__se__2026-02-20",
+            "Acme",
+            "Software Engineer",
+            LocalDate.parse("2026-02-20"),
+            "APPLIED",
+            "note",
+            "LinkedIn",
+            "127.0.0.1"
+        ));
+
+        mockMvc.perform(post("/delete/{id}", saved.getId()))
+            .andExpect(status().isForbidden());
+
+        assertThat(jobApplicationRepository.findById(saved.getId())).isPresent();
     }
 }

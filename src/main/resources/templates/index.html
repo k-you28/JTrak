@@ -15,6 +15,7 @@
       <div>
         <h1>Job Application Tracker</h1>
         <p>Keep every opportunity organized from first application to final outcome.</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Signed in as <strong th:text="${currentUser}">user@example.com</strong></p>
       </div>
       <div class="kpi">
         <span class="kpi-label">Total Applications</span>
@@ -26,6 +27,9 @@
 
     <div class="toolbar">
       <a href="/add" class="btn btn-primary">+ Add Application</a>
+      <form th:action="@{/logout}" method="post">
+        <button type="submit" class="btn btn-secondary">Logout</button>
+      </form>
     </div>
 
     <section class="panel table-wrap">

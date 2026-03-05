@@ -2,6 +2,7 @@ package com.kevin.jobtracker.integration;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,8 +39,10 @@ class WebUiAddIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "student@example.com")
     void addThenHomeShowsRecordedApplication() throws Exception {
         mockMvc.perform(post("/add")
+                .with(csrf())
                 .param("companyName", "Acme")
                 .param("positionTitle", "Software Engineer")
                 .param("dateApplied", "2026-02-28")
@@ -53,5 +57,22 @@ class WebUiAddIntegrationTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Acme")))
             .andExpect(content().string(org.hamcrest.Matchers.not(
                 org.hamcrest.Matchers.containsString("No applications yet"))));
+    }
+
+    @Test
+    void addFormRedirectsToLoginWhenAnonymous() throws Exception {
+        mockMvc.perform(get("/add"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    @WithMockUser(username = "student@example.com")
+    void addRejectsWhenCsrfMissing() throws Exception {
+        mockMvc.perform(post("/add")
+                .param("companyName", "Acme")
+                .param("positionTitle", "Software Engineer")
+                .param("dateApplied", "2026-02-28"))
+            .andExpect(status().isForbidden());
     }
 }

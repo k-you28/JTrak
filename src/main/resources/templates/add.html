@@ -21,7 +21,7 @@
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
     <section class="panel">
-      <form method="post" action="/add" th:object="${application}" class="form-grid">
+      <form method="post" th:action="@{/add}" th:object="${application}" class="form-grid">
         <div>
           <label>Company Name *</label>
           <input type="text" th:field="*{companyName}" required/>
