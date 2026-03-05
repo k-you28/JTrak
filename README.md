@@ -76,11 +76,35 @@ What it does:
 
 - **http://localhost:8081/register** – Create account
 - **http://localhost:8081/login** – Sign in
+- **http://localhost:8081/verify-email?token=...** – Verify account email
 - **http://localhost:8081/** – List all applications (after login)
 - **http://localhost:8081/add** – Add an application (after login)
 - **http://localhost:8081/view?requestKey=...** – View one application (after login)
 
 The UI uses Spring Security form login with session auth.
+New accounts must verify email before login succeeds. In local development, verification links are logged by the app (see `LoggingEmailSender` output).
+
+### SMTP email delivery (optional)
+
+By default, verification emails are logged (`app.email.provider=log`).
+
+To send real emails safely (without committing secrets):
+
+1. Copy the local template:
+
+```bash
+cp src/main/resources/application-local.properties.example src/main/resources/application-local.properties
+```
+
+2. Fill in SMTP values in `src/main/resources/application-local.properties`.
+
+3. Run app with local profile:
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+Now registration will send clickable verification emails through your SMTP provider.
 
 ## REST API (API key required)
 

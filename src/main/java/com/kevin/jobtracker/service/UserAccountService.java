@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class UserAccountService implements UserDetailsService {
@@ -24,7 +25,7 @@ public class UserAccountService implements UserDetailsService {
 	}
 
 	@Transactional
-	public void register(String email, String rawPassword) {
+	public UserAccount register(String email, String rawPassword) {
 		String normalizedEmail = normalizeEmail(email);
 		validatePassword(rawPassword);
 
@@ -33,7 +34,11 @@ public class UserAccountService implements UserDetailsService {
 		}
 
 		UserAccount account = new UserAccount(normalizedEmail, passwordEncoder.encode(rawPassword));
-		userAccountRepository.save(account);
+		return userAccountRepository.save(account);
+	}
+
+	public Optional<UserAccount> findByEmail(String email) {
+		return userAccountRepository.findByEmail(normalizeEmail(email));
 	}
 
 	@Override
@@ -42,7 +47,7 @@ public class UserAccountService implements UserDetailsService {
 		UserAccount account = userAccountRepository.findByEmail(normalizedEmail)
 			.orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
 
-		boolean enabled = "ACTIVE".equalsIgnoreCase(account.getStatus());
+		boolean enabled = "ACTIVE".equalsIgnoreCase(account.getStatus()) && account.isEmailVerified();
 
 		return User.withUsername(account.getEmail())
 			.password(account.getPasswordHash())
