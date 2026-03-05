@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Login - Job Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <h1>Sign In</h1>
+        <p>Use your account to access your job tracker workspace.</p>
+      </div>
+    </section>
+
+    <p th:if="${param.error}" class="notice error">Invalid email or password.</p>
+    <p th:if="${param.logout}" class="notice success">You have been logged out.</p>
+    <p th:if="${message}" class="notice success" th:text="${message}">Message</p>
+
+    <section class="panel">
+      <form method="post" th:action="@{/login}" class="form-grid">
+        <div>
+          <label>Email</label>
+          <input type="email" name="username" required/>
+        </div>
+
+        <div>
+          <label>Password</label>
+          <input type="password" name="password" required/>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit">Sign In</button>
+          <a href="/register" class="btn btn-secondary">Create Account</a>
+        </div>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
