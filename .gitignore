@@ -12,3 +12,6 @@ data/
 
 # Local env/logs
 *.log
+
+# Local Spring profile overrides (contains secrets)
+src/main/resources/application-local.properties
