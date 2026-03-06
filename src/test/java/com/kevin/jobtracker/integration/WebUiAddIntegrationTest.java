@@ -7,7 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.kevin.jobtracker.entity.UserAccount;
 import com.kevin.jobtracker.repository.JobApplicationRepository;
+import com.kevin.jobtracker.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +35,16 @@ class WebUiAddIntegrationTest {
     @Autowired
     private JobApplicationRepository jobApplicationRepository;
 
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
     @BeforeEach
     void setup() {
         jobApplicationRepository.deleteAll();
+        userAccountRepository.deleteAll();
+        UserAccount user = new UserAccount("student@example.com", "hash");
+        user.setEmailVerified(true);
+        userAccountRepository.save(user);
     }
 
     @Test

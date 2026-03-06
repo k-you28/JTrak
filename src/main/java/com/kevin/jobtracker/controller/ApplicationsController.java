@@ -25,21 +25,20 @@ public class ApplicationsController {
 			HttpServletRequest httpRequest
 	) {
 		String clientIp = extractClientIp(httpRequest);
-		//System.out.println("KY TEST" + request.getCompanyName());
-		JobApplication created = applicationService.submit(request, clientIp);
+		JobApplication created = applicationService.submit(request, clientIp, null);
 		return ResponseEntity.status(HttpStatus.CREATED).body(created);
 	}
 
 	@GetMapping("/{requestKey}")
 	public ResponseEntity<JobApplication> getByRequestKey(@PathVariable String requestKey) {
-		return applicationService.getByRequestKey(requestKey)
+		return applicationService.getByRequestKey(requestKey, null)
 			.map(ResponseEntity::ok)
 			.orElse(ResponseEntity.notFound().build());
 	}
 
 	@GetMapping
 	public List<JobApplication> list() {
-		return applicationService.listAll();
+		return applicationService.listAll(null);
 	}
 
 	private String extractClientIp(HttpServletRequest request) {

@@ -2,35 +2,51 @@ package com.kevin.jobtracker.service;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kevin.jobtracker.entity.DeadLetterEvent;
 import com.kevin.jobtracker.entity.JobApplication;
+import com.kevin.jobtracker.entity.UserAccount;
 import com.kevin.jobtracker.metrics.ApplicationMetrics;
 import com.kevin.jobtracker.model.JobApplicationRequest;
 import com.kevin.jobtracker.repository.JobApplicationRepository;
+import com.kevin.jobtracker.repository.UserAccountRepository;
 
 @Service
 public class JobApplicationService {
 
 	private final JobApplicationRepository applicationRepository;
+	private final UserAccountRepository userAccountRepository;
 	private final ApplicationMetrics metrics;
 	private final DeadLetterService deadLetterService;
+	private final String legacyOwnerEmail;
 
 	public JobApplicationService(JobApplicationRepository applicationRepository,
+	                             UserAccountRepository userAccountRepository,
 	                             ApplicationMetrics metrics,
-	                             DeadLetterService deadLetterService) {
+	                             DeadLetterService deadLetterService,
+	                             @Value("${app.ownership.legacy-email:legacy-api@jobtracker.local}") String legacyOwnerEmail) {
 		this.applicationRepository = applicationRepository;
+		this.userAccountRepository = userAccountRepository;
 		this.metrics = metrics;
 		this.deadLetterService = deadLetterService;
+		this.legacyOwnerEmail = legacyOwnerEmail;
 	}
 
 	@Transactional
 	public JobApplication submit(JobApplicationRequest req, String clientIp) {
+		return submit(req, clientIp, null);
+	}
+
+	@Transactional
+	public JobApplication submit(JobApplicationRequest req, String clientIp, String ownerEmail) {
+		String ownerUserId = resolveOwnerUserId(ownerEmail);
 		String key = req.getRequestKey();
 		try {
 			if (req.getCompanyName() == null || req.getCompanyName().isBlank())
@@ -43,7 +59,7 @@ public class JobApplicationService {
 			req.setRequestKey(key);
 
 			Instant now = Instant.now();
-			Optional<JobApplication> existingOpt = applicationRepository.findByRequestKey(key);
+			Optional<JobApplication> existingOpt = applicationRepository.findByRequestKeyAndUserId(key, ownerUserId);
 
 			if (existingOpt.isPresent()) {
 				JobApplication existing = existingOpt.get();
@@ -61,7 +77,7 @@ public class JobApplicationService {
 				return applicationRepository.save(existing);
 			}
 
-			Optional<JobApplication> lastOpt = applicationRepository.findTopByClientIpOrderByCreatedAtDesc(clientIp);
+			Optional<JobApplication> lastOpt = applicationRepository.findTopByClientIpAndUserIdOrderByCreatedAtDesc(clientIp, ownerUserId);
 			if (lastOpt.isPresent() && lastOpt.get().getCreatedAt().plusSeconds(2).isAfter(now)) {
 				metrics.recordRateLimited();
 				throw new IllegalStateException("Rate limit exceeded");
@@ -77,6 +93,7 @@ public class JobApplicationService {
 				req.getSource(),
 				clientIp
 			);
+			app.setUserId(ownerUserId);
 			app.setCreatedAt(now);
 			metrics.recordCreated();
 			return applicationRepository.save(app);
@@ -95,10 +112,17 @@ public class JobApplicationService {
 
 	@Transactional
 	public void deleteById(String id) {
+		deleteById(id, null);
+	}
+
+	@Transactional
+	public void deleteById(String id, String ownerEmail) {
+		String ownerUserId = resolveOwnerUserId(ownerEmail);
 		if (id == null || id.isBlank()) {
 			throw new IllegalArgumentException("Application id required");
 		}
-		if (!applicationRepository.existsById(id)) {
+		Optional<JobApplication> existing = applicationRepository.findByIdAndUserId(id, ownerUserId);
+		if (existing.isEmpty()) {
 			throw new IllegalArgumentException("Application not found");
 		}
 		applicationRepository.deleteById(id);
@@ -106,16 +130,52 @@ public class JobApplicationService {
 
 
 	public Optional<JobApplication> getByRequestKey(String requestKey) {
-		return applicationRepository.findByRequestKey(requestKey);
+		return getByRequestKey(requestKey, null);
+	}
+
+	public Optional<JobApplication> getByRequestKey(String requestKey, String ownerEmail) {
+		String ownerUserId = resolveOwnerUserId(ownerEmail);
+		return applicationRepository.findByRequestKeyAndUserId(requestKey, ownerUserId);
 	}
 
 	public Optional<JobApplication> getById(String id) {
-		return applicationRepository.findById(id);
+		return getById(id, null);
+	}
+
+	public Optional<JobApplication> getById(String id, String ownerEmail) {
+		String ownerUserId = resolveOwnerUserId(ownerEmail);
+		return applicationRepository.findByIdAndUserId(id, ownerUserId);
 	}
 
 	public List<JobApplication> listAll() {
-		List<JobApplication> applications = applicationRepository.findAllByOrderByDateAppliedDescCreatedAtDesc();
+		return listAll(null);
+	}
+
+	public List<JobApplication> listAll(String ownerEmail) {
+		String ownerUserId = resolveOwnerUserId(ownerEmail);
+		List<JobApplication> applications = applicationRepository.findAllByUserIdOrderByDateAppliedDescCreatedAtDesc(ownerUserId);
 		return applications != null ? applications : Collections.emptyList();
+	}
+
+	private String resolveOwnerUserId(String ownerEmail) {
+		if (ownerEmail == null || ownerEmail.isBlank()) {
+			return getOrCreateLegacyOwner().getId();
+		}
+		String normalized = ownerEmail.trim().toLowerCase(Locale.ROOT);
+		UserAccount account = userAccountRepository.findByEmail(normalized)
+			.orElseThrow(() -> new IllegalArgumentException("Authenticated user account not found"));
+		return account.getId();
+	}
+
+	private UserAccount getOrCreateLegacyOwner() {
+		String normalized = legacyOwnerEmail.trim().toLowerCase(Locale.ROOT);
+		return userAccountRepository.findByEmail(normalized)
+			.orElseGet(() -> {
+				UserAccount legacy = new UserAccount(normalized, "$2a$10$7EqJtq98hPqEX7fNZaFWoO6P6QF6UVx/FuWRzE7dOjIvmhjYQdkf.");
+				legacy.setEmailVerified(true);
+				legacy.setStatus("ACTIVE");
+				return userAccountRepository.save(legacy);
+			});
 	}
 
 	private static boolean isSameContent(JobApplication existing, JobApplicationRequest req) {

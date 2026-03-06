@@ -21,9 +21,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.kevin.jobtracker.entity.JobApplication;
+import com.kevin.jobtracker.entity.UserAccount;
 import com.kevin.jobtracker.metrics.ApplicationMetrics;
 import com.kevin.jobtracker.model.JobApplicationRequest;
 import com.kevin.jobtracker.repository.JobApplicationRepository;
+import com.kevin.jobtracker.repository.UserAccountRepository;
 
 @ExtendWith(MockitoExtension.class)
 class JobApplicationServiceTest {
@@ -37,11 +39,25 @@ class JobApplicationServiceTest {
     @Mock
     private DeadLetterService deadLetterService;
 
+    @Mock
+    private UserAccountRepository userAccountRepository;
+
     private JobApplicationService service;
+    private UserAccount legacyUser;
 
     @BeforeEach
     void setUp() {
-        service = new JobApplicationService(applicationRepository, metrics, deadLetterService);
+        service = new JobApplicationService(
+            applicationRepository,
+            userAccountRepository,
+            metrics,
+            deadLetterService,
+            "legacy-api@jobtracker.local"
+        );
+        legacyUser = new UserAccount("legacy-api@jobtracker.local", "hash");
+        legacyUser.setId("legacy-user-id");
+        legacyUser.setEmailVerified(true);
+        when(userAccountRepository.findByEmail("legacy-api@jobtracker.local")).thenReturn(Optional.of(legacyUser));
     }
 
     @Test
@@ -49,9 +65,9 @@ class JobApplicationServiceTest {
         JobApplicationRequest req = baseRequest();
         req.setRequestKey(null);
 
-        when(applicationRepository.findByRequestKey("acme-inc__senior-engineer__2026-02-20"))
+        when(applicationRepository.findByRequestKeyAndUserId("acme-inc__senior-engineer__2026-02-20", "legacy-user-id"))
             .thenReturn(Optional.empty());
-        when(applicationRepository.findTopByClientIpOrderByCreatedAtDesc("127.0.0.1"))
+        when(applicationRepository.findTopByClientIpAndUserIdOrderByCreatedAtDesc("127.0.0.1", "legacy-user-id"))
             .thenReturn(Optional.empty());
         when(applicationRepository.save(any(JobApplication.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
@@ -80,7 +96,7 @@ class JobApplicationServiceTest {
             "127.0.0.1"
         );
 
-        when(applicationRepository.findByRequestKey("same-key")).thenReturn(Optional.of(existing));
+        when(applicationRepository.findByRequestKeyAndUserId("same-key", "legacy-user-id")).thenReturn(Optional.of(existing));
 
         JobApplication result = service.submit(req, "127.0.0.1");
 
@@ -107,7 +123,7 @@ class JobApplicationServiceTest {
         );
         existing.setCreatedAt(Instant.now());
 
-        when(applicationRepository.findByRequestKey("same-key")).thenReturn(Optional.of(existing));
+        when(applicationRepository.findByRequestKeyAndUserId("same-key", "legacy-user-id")).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.submit(req, "127.0.0.1"))
             .isInstanceOf(IllegalStateException.class)
@@ -120,7 +136,17 @@ class JobApplicationServiceTest {
 
     @Test
     void deleteByIdDeletesExistingRecord() {
-        when(applicationRepository.existsById("app-1")).thenReturn(true);
+        when(applicationRepository.findByIdAndUserId("app-1", "legacy-user-id"))
+            .thenReturn(Optional.of(new JobApplication(
+                "k",
+                "Acme",
+                "SE",
+                LocalDate.parse("2026-02-20"),
+                "APPLIED",
+                "",
+                "",
+                "127.0.0.1"
+            )));
 
         service.deleteById("app-1");
 
@@ -138,7 +164,7 @@ class JobApplicationServiceTest {
 
     @Test
     void deleteByIdRejectsUnknownId() {
-        when(applicationRepository.existsById("missing")).thenReturn(false);
+        when(applicationRepository.findByIdAndUserId("missing", "legacy-user-id")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.deleteById("missing"))
             .isInstanceOf(IllegalArgumentException.class)
@@ -152,8 +178,8 @@ class JobApplicationServiceTest {
         JobApplicationRequest req = baseRequest();
         req.setRequestKey("  custom-key  ");
 
-        when(applicationRepository.findByRequestKey("custom-key")).thenReturn(Optional.empty());
-        when(applicationRepository.findTopByClientIpOrderByCreatedAtDesc("127.0.0.1")).thenReturn(Optional.empty());
+        when(applicationRepository.findByRequestKeyAndUserId("custom-key", "legacy-user-id")).thenReturn(Optional.empty());
+        when(applicationRepository.findTopByClientIpAndUserIdOrderByCreatedAtDesc("127.0.0.1", "legacy-user-id")).thenReturn(Optional.empty());
         when(applicationRepository.save(any(JobApplication.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -166,7 +192,7 @@ class JobApplicationServiceTest {
 
     @Test
     void listAllReturnsEmptyListWhenRepositoryReturnsNull() {
-        when(applicationRepository.findAllByOrderByDateAppliedDescCreatedAtDesc()).thenReturn(null);
+        when(applicationRepository.findAllByUserIdOrderByDateAppliedDescCreatedAtDesc("legacy-user-id")).thenReturn(null);
 
         List<JobApplication> result = service.listAll();
 
