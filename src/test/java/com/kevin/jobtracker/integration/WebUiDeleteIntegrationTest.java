@@ -10,7 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDate;
 
 import com.kevin.jobtracker.entity.JobApplication;
+import com.kevin.jobtracker.entity.UserAccount;
 import com.kevin.jobtracker.repository.JobApplicationRepository;
+import com.kevin.jobtracker.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,9 +38,18 @@ class WebUiDeleteIntegrationTest {
     @Autowired
     private JobApplicationRepository jobApplicationRepository;
 
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    private String studentUserId;
+
     @BeforeEach
     void setup() {
         jobApplicationRepository.deleteAll();
+        userAccountRepository.deleteAll();
+        UserAccount user = new UserAccount("student@example.com", "hash");
+        user.setEmailVerified(true);
+        studentUserId = userAccountRepository.save(user).getId();
     }
 
     @Test
@@ -54,6 +65,8 @@ class WebUiDeleteIntegrationTest {
             "LinkedIn",
             "127.0.0.1"
         ));
+        saved.setUserId(studentUserId);
+        saved = jobApplicationRepository.save(saved);
 
         mockMvc.perform(post("/delete/{id}", saved.getId()).with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -82,6 +95,8 @@ class WebUiDeleteIntegrationTest {
             "LinkedIn",
             "127.0.0.1"
         ));
+        saved.setUserId(studentUserId);
+        saved = jobApplicationRepository.save(saved);
 
         mockMvc.perform(post("/delete/{id}", saved.getId()))
             .andExpect(status().isForbidden());

@@ -23,6 +23,7 @@ public class JobApplication {
 	private String source;      // e.g. LinkedIn, company site, referral
 
 	private String clientIp;
+	private String userId;
 	private Instant createdAt;
 
 	protected JobApplication() {
@@ -68,6 +69,9 @@ public class JobApplication {
 
 	public String getClientIp() { return clientIp; }
 	public void setClientIp(String clientIp) { this.clientIp = clientIp; }
+
+	public String getUserId() { return userId; }
+	public void setUserId(String userId) { this.userId = userId; }
 
 	public Instant getCreatedAt() { return createdAt; }
 	public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

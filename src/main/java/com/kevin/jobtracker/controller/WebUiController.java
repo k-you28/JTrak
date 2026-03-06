@@ -33,9 +33,9 @@ public class WebUiController {
 	}
 
 	@GetMapping("/")
-	public String home(Model model, HttpServletResponse response) {
+	public String home(Model model, HttpServletResponse response, Principal principal) {
 		disableCache(response);
-		List<JobApplication> applications = applicationService.listAll();
+		List<JobApplication> applications = applicationService.listAll(principal.getName());
 		model.addAttribute("applications", applications);
 		return "index";
 	}
@@ -49,10 +49,11 @@ public class WebUiController {
 
 	@PostMapping("/add")
 	public String submit(@ModelAttribute JobApplicationRequest request, HttpServletRequest httpRequest,
-	                    RedirectAttributes redirectAttributes) {
+	                    RedirectAttributes redirectAttributes,
+	                    Principal principal) {
 		String clientIp = httpRequest.getRemoteAddr();
 		try {
-			applicationService.submit(request, clientIp);
+			applicationService.submit(request, clientIp, principal.getName());
 			redirectAttributes.addFlashAttribute("message", "Application recorded.");
 		} catch (Exception e) {
 			redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -62,9 +63,9 @@ public class WebUiController {
 	}
 
 	@PostMapping("/delete/{id}")
-	public String delete(@PathVariable String id, RedirectAttributes redirectAttributes) {
+	public String delete(@PathVariable String id, RedirectAttributes redirectAttributes, Principal principal) {
 		try {
-			applicationService.deleteById(id);
+			applicationService.deleteById(id, principal.getName());
 			redirectAttributes.addFlashAttribute("message", "Application deleted.");
 		} catch (Exception e) {
 			redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -76,28 +77,29 @@ public class WebUiController {
 	public String view(@RequestParam(required = false) String id,
 	                  @RequestParam(required = false) String requestKey,
 	                  Model model,
-	                  HttpServletResponse response) {
+	                  HttpServletResponse response,
+	                  Principal principal) {
 		disableCache(response);
 		if (id != null && !id.isBlank()) {
-			return renderById(id, model);
+			return renderById(id, model, principal.getName());
 		}
 		if (requestKey != null && !requestKey.isBlank()) {
-			return renderByRequestKey(requestKey, model);
+			return renderByRequestKey(requestKey, model, principal.getName());
 		}
 		model.addAttribute("error", "Application not found");
 		return "view";
 	}
 
 	@GetMapping("/view/{id}")
-	public String viewById(@PathVariable String id, Model model, HttpServletResponse response) {
+	public String viewById(@PathVariable String id, Model model, HttpServletResponse response, Principal principal) {
 		disableCache(response);
-		return renderById(id, model);
+		return renderById(id, model, principal.getName());
 	}
 
 	@GetMapping("/view/key/{requestKey}")
-	public String viewByRequestKey(@PathVariable String requestKey, Model model, HttpServletResponse response) {
+	public String viewByRequestKey(@PathVariable String requestKey, Model model, HttpServletResponse response, Principal principal) {
 		disableCache(response);
-		return renderByRequestKey(requestKey, model);
+		return renderByRequestKey(requestKey, model, principal.getName());
 	}
 
 	private static void disableCache(HttpServletResponse response) {
@@ -106,8 +108,8 @@ public class WebUiController {
 		response.setDateHeader("Expires", 0);
 	}
 
-	private String renderById(String id, Model model) {
-		Optional<JobApplication> app = applicationService.getById(id);
+	private String renderById(String id, Model model, String ownerEmail) {
+		Optional<JobApplication> app = applicationService.getById(id, ownerEmail);
 		if (app.isEmpty()) {
 			model.addAttribute("error", "Application not found");
 			return "view";
@@ -116,8 +118,8 @@ public class WebUiController {
 		return "view";
 	}
 
-	private String renderByRequestKey(String requestKey, Model model) {
-		Optional<JobApplication> app = applicationService.getByRequestKey(requestKey);
+	private String renderByRequestKey(String requestKey, Model model, String ownerEmail) {
+		Optional<JobApplication> app = applicationService.getByRequestKey(requestKey, ownerEmail);
 		if (app.isEmpty()) {
 			model.addAttribute("error", "Application not found");
 			return "view";
