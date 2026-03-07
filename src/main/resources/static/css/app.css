@@ -53,9 +53,16 @@ body {
   box-shadow: var(--shadow);
 }
 
-.market-panel {
-  width: min(540px, 50%);
+.insights-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.95rem;
   margin-bottom: 0.95rem;
+}
+
+.market-panel {
+  width: 100%;
+  margin-bottom: 0;
 }
 
 .market-head {
@@ -126,6 +133,57 @@ body {
   margin-top: 0.35rem;
   color: var(--muted);
   font-size: 0.72rem;
+}
+
+.news-panel {
+  background: #fbfdff;
+  min-height: 220px;
+}
+
+.news-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.news-head h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.news-head span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.news-list {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.news-list li {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.news-list a {
+  display: block;
+  color: #0b5ed7;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.25;
+}
+
+.news-list a:hover {
+  text-decoration: underline;
+}
+
+.news-list li span {
+  display: block;
+  margin-top: 0.1rem;
 }
 
 .health-healthy {
@@ -396,6 +454,10 @@ dd {
 
   .market-panel {
     width: 100%;
+  }
+
+  .insights-row {
+    grid-template-columns: 1fr;
   }
 
   .kpi {
