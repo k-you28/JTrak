@@ -11,6 +11,32 @@
 </head>
 <body>
   <main class="page-shell">
+    <section class="panel market-panel">
+      <div class="market-head">
+        <h2>Software Market Health Trend</h2>
+        <span>
+          Relative signal:
+          <strong th:if="${latestMarketSnapshot != null}"
+                  th:class="${marketHealthClass}"
+                  th:text="${marketHealthLabel}">OK</strong>
+          <strong th:if="${latestMarketSnapshot == null}" class="health-ok">Waiting</strong>
+        </span>
+      </div>
+      <div class="market-meta" th:if="${latestMarketSnapshot != null}">
+        <span th:text="${'Last updated: ' + marketLastUpdated}">Last updated: n/a</span>
+      </div>
+      <div class="trend-line-wrap" th:if="${marketTrendSnapshots != null and !#lists.isEmpty(marketTrendSnapshots)}">
+        <svg viewBox="0 0 360 120" class="trend-line-svg" preserveAspectRatio="none" role="img" aria-label="External jobs trend">
+          <polyline points="10,110 350,10" class="trend-line" th:classappend="${' ' + marketHealthClass}" th:attr="points=${marketTrendPoints}"></polyline>
+        </svg>
+      </div>
+      <div class="trend-axis" th:if="${marketTrendAxisLabels != null and !#lists.isEmpty(marketTrendAxisLabels)}">
+        <span th:each="label : ${marketTrendAxisLabels}" th:text="${label}">Jan 1</span>
+      </div>
+      <p class="empty-state" th:if="${marketTrendSnapshots == null or #lists.isEmpty(marketTrendSnapshots)}">No snapshots yet. Login or wait for the scheduled poll.</p>
+      <p class="notice error" th:if="${latestMarketSnapshot != null and latestMarketSnapshot.errorMessage != null}" th:text="${'Last poll error: ' + latestMarketSnapshot.errorMessage}">Last poll error</p>
+    </section>
+
     <section class="hero">
       <div>
         <h1>Job Application Tracker</h1>

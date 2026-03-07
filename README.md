@@ -83,6 +83,8 @@ What it does:
 
 The UI uses Spring Security form login with session auth.
 New accounts must verify email before login succeeds. In local development, verification links are logged by the app (see `LoggingEmailSender` output).
+Homepage now shows a shared software market health trend chart from Arbeitnow snapshots (relative trend, not explicit job totals).
+Market data is fetched once on application startup (not on login).
 
 ### SMTP email delivery (optional)
 
@@ -105,6 +107,21 @@ cp src/main/resources/application-local.properties.example src/main/resources/ap
 ```
 
 Now registration will send clickable verification emails through your SMTP provider.
+
+### External job market polling
+
+On application startup, the app queries Arbeitnow for `software` and uses exponential + binary search to find the last non-empty page.
+It then estimates total jobs as:
+
+`(lastNonEmptyPage - pageStart) * pageSize + lastPageCount`
+
+Config keys:
+- `app.market.enabled`
+- `app.market.api.base-url`
+- `app.market.query`
+- `app.market.page-start`
+- `app.market.page-size`
+- `app.market.max-search-page`
 
 ## REST API (API key required)
 
