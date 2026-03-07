@@ -1,8 +1,10 @@
 package com.kevin.jobtracker.controller;
 
 import com.kevin.jobtracker.entity.JobApplication;
+import com.kevin.jobtracker.entity.JobMarketSnapshot;
 import com.kevin.jobtracker.model.JobApplicationRequest;
 import com.kevin.jobtracker.service.JobApplicationService;
+import com.kevin.jobtracker.service.JobMarketAnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
@@ -16,15 +18,27 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.stream.Collectors;
 import java.security.Principal;
 
 @Controller
 public class WebUiController {
 
 	private final JobApplicationService applicationService;
+	private final JobMarketAnalyticsService jobMarketAnalyticsService;
 
-	public WebUiController(JobApplicationService applicationService) {
+	public WebUiController(JobApplicationService applicationService,
+	                       JobMarketAnalyticsService jobMarketAnalyticsService) {
 		this.applicationService = applicationService;
+		this.jobMarketAnalyticsService = jobMarketAnalyticsService;
 	}
 
 	@ModelAttribute("currentUser")
@@ -36,7 +50,25 @@ public class WebUiController {
 	public String home(Model model, HttpServletResponse response, Principal principal) {
 		disableCache(response);
 		List<JobApplication> applications = applicationService.listAll(principal.getName());
+		JobMarketSnapshot latestSnapshot = jobMarketAnalyticsService.latestSnapshot().orElse(null);
+		List<JobMarketSnapshot> trendSnapshots = capToLastMonthIfNeeded(
+			compressToDailyLatest(jobMarketAnalyticsService.snapshotsSince(Instant.EPOCH))
+		);
+		JobMarketAnalyticsService.MarketSignalSummary signalSummary = jobMarketAnalyticsService.buildMarketSignalSummary(trendSnapshots);
+		int maxTrendJobs = trendSnapshots.stream().mapToInt(JobMarketSnapshot::getTotalJobs).max().orElse(1);
+		String trendPoints = buildTrendPoints(trendSnapshots, maxTrendJobs);
+		List<String> trendAxisLabels = buildAxisLabels(trendSnapshots);
 		model.addAttribute("applications", applications);
+		model.addAttribute("latestMarketSnapshot", latestSnapshot);
+		model.addAttribute("marketTrendSnapshots", trendSnapshots);
+		model.addAttribute("marketTrendMax", Math.max(maxTrendJobs, 1));
+		model.addAttribute("marketTrendPoints", trendPoints);
+		model.addAttribute("marketTrendAxisLabels", trendAxisLabels);
+		model.addAttribute("marketHealthLabel", signalSummary.label());
+		model.addAttribute("marketHealthClass", signalSummary.cssClass());
+		model.addAttribute("marketLastUpdated", latestSnapshot != null
+			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(latestSnapshot.getCreatedAt().atZone(ZoneId.systemDefault()))
+			: "n/a");
 		return "index";
 	}
 
@@ -127,4 +159,78 @@ public class WebUiController {
 		model.addAttribute("jobApplication", app.get());
 		return "view";
 	}
+
+	private static String buildTrendPoints(List<JobMarketSnapshot> snapshots, int maxJobs) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return "";
+		}
+		int width = 360;
+		int height = 120;
+		int padding = 10;
+		int usableWidth = width - (padding * 2);
+		int usableHeight = height - (padding * 2);
+		int denominator = Math.max(maxJobs, 1);
+
+		if (snapshots.size() == 1) {
+			int y = height - padding - (snapshots.get(0).getTotalJobs() * usableHeight / denominator);
+			return (width / 2) + "," + y;
+		}
+
+		return java.util.stream.IntStream.range(0, snapshots.size())
+			.mapToObj(i -> {
+				JobMarketSnapshot snap = snapshots.get(i);
+				int x = padding + (i * usableWidth / (snapshots.size() - 1));
+				int y = height - padding - (snap.getTotalJobs() * usableHeight / denominator);
+				return x + "," + y;
+			})
+			.collect(Collectors.joining(" "));
+	}
+
+	private static List<JobMarketSnapshot> compressToDailyLatest(List<JobMarketSnapshot> snapshots) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return Collections.emptyList();
+		}
+		LinkedHashMap<LocalDate, JobMarketSnapshot> byDay = new LinkedHashMap<>();
+		ZoneId zone = ZoneId.systemDefault();
+		for (JobMarketSnapshot snapshot : snapshots) {
+			LocalDate day = snapshot.getCreatedAt().atZone(zone).toLocalDate();
+			byDay.put(day, snapshot);
+		}
+		List<JobMarketSnapshot> daily = new ArrayList<>(byDay.values());
+		daily.sort(Comparator.comparing(JobMarketSnapshot::getCreatedAt));
+		return daily;
+	}
+
+	private static List<JobMarketSnapshot> capToLastMonthIfNeeded(List<JobMarketSnapshot> snapshots) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return Collections.emptyList();
+		}
+		Instant latest = snapshots.get(snapshots.size() - 1).getCreatedAt();
+		Instant cutoff = latest.minusSeconds(30L * 24L * 60L * 60L);
+		Instant earliest = snapshots.get(0).getCreatedAt();
+		if (!earliest.isBefore(cutoff)) {
+			return snapshots;
+		}
+		return snapshots.stream()
+			.filter(snapshot -> !snapshot.getCreatedAt().isBefore(cutoff))
+			.toList();
+	}
+
+	private static List<String> buildAxisLabels(List<JobMarketSnapshot> snapshots) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return Collections.emptyList();
+		}
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d");
+		ZoneId zone = ZoneId.systemDefault();
+		List<String> labels = new ArrayList<>();
+		int[] idx = new int[] {0, snapshots.size() / 3, (snapshots.size() * 2) / 3, snapshots.size() - 1};
+		for (int i : idx) {
+			String label = snapshots.get(i).getCreatedAt().atZone(zone).toLocalDate().format(formatter);
+			if (labels.isEmpty() || !labels.get(labels.size() - 1).equals(label)) {
+				labels.add(label);
+			}
+		}
+		return labels;
+	}
+
 }

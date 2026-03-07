@@ -28,7 +28,8 @@ import org.springframework.test.web.servlet.MockMvc;
     "spring.datasource.url=jdbc:h2:mem:jobtracker-ui-test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL",
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.hibernate.ddl-auto=create-drop",
-    "spring.jpa.show-sql=false"
+    "spring.jpa.show-sql=false",
+    "app.market.enabled=false"
 })
 class WebUiDeleteIntegrationTest {
 

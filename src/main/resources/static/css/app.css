@@ -53,6 +53,93 @@ body {
   box-shadow: var(--shadow);
 }
 
+.market-panel {
+  width: min(540px, 50%);
+  margin-bottom: 0.95rem;
+}
+
+.market-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.55rem;
+}
+
+.market-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.market-head span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.market-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 0.45rem;
+}
+
+.trend-line-wrap {
+  height: 120px;
+  padding: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.trend-line-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.trend-line {
+  fill: none;
+  stroke: #0284c7;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-line.health-healthy {
+  stroke: #15803d;
+}
+
+.trend-line.health-ok {
+  stroke: #ca8a04;
+}
+
+.trend-line.health-poor {
+  stroke: #b91c1c;
+}
+
+.trend-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.health-healthy {
+  color: #15803d;
+}
+
+.health-ok {
+  color: #ca8a04;
+}
+
+.health-poor {
+  color: #b91c1c;
+}
+
 .hero {
   display: flex;
   flex-wrap: wrap;
@@ -305,6 +392,10 @@ dd {
 
   .hero {
     padding: 1rem;
+  }
+
+  .market-panel {
+    width: 100%;
   }
 
   .kpi {
