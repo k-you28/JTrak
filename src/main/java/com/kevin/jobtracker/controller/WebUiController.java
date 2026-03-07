@@ -3,6 +3,7 @@ package com.kevin.jobtracker.controller;
 import com.kevin.jobtracker.entity.JobApplication;
 import com.kevin.jobtracker.entity.JobMarketSnapshot;
 import com.kevin.jobtracker.model.JobApplicationRequest;
+import com.kevin.jobtracker.service.HackerNewsService;
 import com.kevin.jobtracker.service.JobApplicationService;
 import com.kevin.jobtracker.service.JobMarketAnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,11 +35,14 @@ public class WebUiController {
 
 	private final JobApplicationService applicationService;
 	private final JobMarketAnalyticsService jobMarketAnalyticsService;
+	private final HackerNewsService hackerNewsService;
 
 	public WebUiController(JobApplicationService applicationService,
-	                       JobMarketAnalyticsService jobMarketAnalyticsService) {
+	                       JobMarketAnalyticsService jobMarketAnalyticsService,
+	                       HackerNewsService hackerNewsService) {
 		this.applicationService = applicationService;
 		this.jobMarketAnalyticsService = jobMarketAnalyticsService;
+		this.hackerNewsService = hackerNewsService;
 	}
 
 	@ModelAttribute("currentUser")
@@ -55,6 +59,7 @@ public class WebUiController {
 			compressToDailyLatest(jobMarketAnalyticsService.snapshotsSince(Instant.EPOCH))
 		);
 		JobMarketAnalyticsService.MarketSignalSummary signalSummary = jobMarketAnalyticsService.buildMarketSignalSummary(trendSnapshots);
+		List<HackerNewsService.NewsStory> topStories = hackerNewsService.latestStories();
 		int maxTrendJobs = trendSnapshots.stream().mapToInt(JobMarketSnapshot::getTotalJobs).max().orElse(1);
 		String trendPoints = buildTrendPoints(trendSnapshots, maxTrendJobs);
 		List<String> trendAxisLabels = buildAxisLabels(trendSnapshots);
@@ -69,6 +74,11 @@ public class WebUiController {
 		model.addAttribute("marketLastUpdated", latestSnapshot != null
 			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(latestSnapshot.getCreatedAt().atZone(ZoneId.systemDefault()))
 			: "n/a");
+		model.addAttribute("newsStories", topStories);
+		model.addAttribute("newsLastUpdated", hackerNewsService.lastUpdatedAt() != null
+			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(hackerNewsService.lastUpdatedAt().atZone(ZoneId.systemDefault()))
+			: "n/a");
+		model.addAttribute("newsError", hackerNewsService.lastError());
 		return "index";
 	}
 
