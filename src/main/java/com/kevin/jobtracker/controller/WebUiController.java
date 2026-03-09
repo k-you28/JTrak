@@ -6,6 +6,7 @@ import com.kevin.jobtracker.model.JobApplicationRequest;
 import com.kevin.jobtracker.service.HackerNewsService;
 import com.kevin.jobtracker.service.JobApplicationService;
 import com.kevin.jobtracker.service.JobMarketAnalyticsService;
+import com.kevin.jobtracker.service.SkillDemandAnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
@@ -36,13 +37,16 @@ public class WebUiController {
 	private final JobApplicationService applicationService;
 	private final JobMarketAnalyticsService jobMarketAnalyticsService;
 	private final HackerNewsService hackerNewsService;
+	private final SkillDemandAnalyticsService skillDemandAnalyticsService;
 
 	public WebUiController(JobApplicationService applicationService,
 	                       JobMarketAnalyticsService jobMarketAnalyticsService,
-	                       HackerNewsService hackerNewsService) {
+	                       HackerNewsService hackerNewsService,
+	                       SkillDemandAnalyticsService skillDemandAnalyticsService) {
 		this.applicationService = applicationService;
 		this.jobMarketAnalyticsService = jobMarketAnalyticsService;
 		this.hackerNewsService = hackerNewsService;
+		this.skillDemandAnalyticsService = skillDemandAnalyticsService;
 	}
 
 	@ModelAttribute("currentUser")
@@ -79,6 +83,14 @@ public class WebUiController {
 			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(hackerNewsService.lastUpdatedAt().atZone(ZoneId.systemDefault()))
 			: "n/a");
 		model.addAttribute("newsError", hackerNewsService.lastError());
+		model.addAttribute("topSkills", skillDemandAnalyticsService.latestTopSkills());
+		model.addAttribute("topSkillsLastUpdated", skillDemandAnalyticsService.lastUpdatedAt() != null
+			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(skillDemandAnalyticsService.lastUpdatedAt().atZone(ZoneId.systemDefault()))
+			: "n/a");
+		model.addAttribute("topSkillsError", skillDemandAnalyticsService.lastError());
+		model.addAttribute("topSkillsSampleJobs", skillDemandAnalyticsService.latestSampleJobs());
+		model.addAttribute("topSkillsNoMatches", skillDemandAnalyticsService.latestNoMatchesInSample());
+		model.addAttribute("topSkillsMaxPages", skillDemandAnalyticsService.configuredMaxPages());
 		return "index";
 	}
 

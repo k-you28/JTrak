@@ -26,7 +26,9 @@ import org.springframework.test.web.servlet.MockMvc;
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.show-sql=false",
-    "app.market.enabled=false"
+    "app.market.enabled=false",
+    "app.news.enabled=false",
+    "app.skills.enabled=false"
 })
 class WebUiAddIntegrationTest {
 
