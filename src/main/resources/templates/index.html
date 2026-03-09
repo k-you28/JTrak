@@ -54,6 +54,24 @@
         <p class="empty-state" th:if="${newsStories == null or #lists.isEmpty(newsStories)}">No stories loaded yet.</p>
         <p class="notice error" th:if="${newsError != null}" th:text="${'News refresh error: ' + newsError}">News refresh error</p>
       </section>
+
+      <section class="panel skills-panel">
+        <div class="skills-head">
+          <h3>Top 8 In-Demand Skills</h3>
+          <span th:text="${'Updated: ' + topSkillsLastUpdated}">Updated: n/a</span>
+        </div>
+        <ol class="skills-list" th:if="${topSkills != null and !#lists.isEmpty(topSkills)}">
+          <li th:each="skill : ${topSkills}">
+            <span class="skills-rank" th:text="${skill.rank + '.'}">1.</span>
+            <span class="skills-name" th:text="${skill.skill}">java</span>
+            <span class="skills-count" th:text="${skill.count}">0</span>
+          </li>
+        </ol>
+        <p class="empty-state" th:if="${(topSkills == null or #lists.isEmpty(topSkills)) and (topSkillsNoMatches == null or !topSkillsNoMatches)}">No skill snapshots yet.</p>
+        <p class="empty-state" th:if="${topSkillsNoMatches != null and topSkillsNoMatches}" th:text="${'No tracked skills matched the current sample across up to ' + topSkillsMaxPages + ' pages.'}">No tracked skills matched the current sample.</p>
+        <p class="skills-footnote" th:text="${'Sample size: ' + topSkillsSampleJobs + ' full descriptions from up to ' + topSkillsMaxPages + ' pages.'}">Sample size: 0 full descriptions from up to 5 pages.</p>
+        <p class="notice error" th:if="${topSkillsError != null}" th:text="${'Skills refresh error: ' + topSkillsError}">Skills refresh error</p>
+      </section>
     </div>
 
     <section class="hero">

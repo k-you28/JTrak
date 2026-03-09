@@ -55,7 +55,7 @@ body {
 
 .insights-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.95rem;
   margin-bottom: 0.95rem;
 }
@@ -184,6 +184,73 @@ body {
 .news-list li span {
   display: block;
   margin-top: 0.1rem;
+}
+
+.skills-panel {
+  background: #fcfdff;
+}
+
+.skills-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.skills-head h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.skills-head span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.skills-list {
+  margin: 0.45rem 0 0.4rem;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.skills-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.84rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.35rem 0.5rem;
+  background: #ffffff;
+}
+
+.skills-rank {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.skills-name {
+  font-weight: 700;
+}
+
+.skills-count {
+  color: #0b5ed7;
+  font-weight: 800;
+}
+
+.skills-footnote {
+  margin: 0.2rem 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 980px) {
+  .insights-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .health-healthy {
