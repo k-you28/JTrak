@@ -11,6 +11,86 @@
 </head>
 <body>
   <main class="page-shell">
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+      <div>
+        <h1>Job Application Tracker</h1>
+        <p>Keep every opportunity organized from first application to final outcome.</p>
+        <p style="margin-top: 0.4rem; font-size: 0.85rem; color: var(--muted);">
+          Signed in as <strong th:text="${currentUser}">user@example.com</strong>
+        </p>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Total Applications</span>
+        <span class="kpi-value" th:text="${applications != null ? #lists.size(applications) : 0}">0</span>
+      </div>
+    </section>
+
+    <!-- ── Flash message ── -->
+    <p th:if="${message}" class="notice success" th:text="${message}">Message</p>
+
+    <!-- ── Toolbar ── -->
+    <div class="toolbar">
+      <a href="/add" class="btn btn-primary">+ Add Application</a>
+      <form th:action="@{/logout}" method="post">
+        <button type="submit" class="btn btn-secondary">Logout</button>
+      </form>
+    </div>
+
+    <!-- ── Applications table ── -->
+    <section class="panel table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 44px;"></th>
+            <th>Company</th>
+            <th>Position</th>
+            <th>Date Applied</th>
+            <th>Status</th>
+            <th>Source</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="app : ${applications}">
+            <td>
+              <form th:action="@{/delete/{id}(id=${app.id})}" method="post">
+                <button type="submit" class="btn btn-danger" title="Delete application">✕</button>
+              </form>
+            </td>
+            <td th:text="${app.companyName}">Company</td>
+            <td th:text="${app.positionTitle}">Position</td>
+            <td th:text="${app.dateApplied}">Date</td>
+            <td>
+              <span class="status-badge"
+                    th:classappend="' status-' + ${#strings.toLowerCase(app.status)}"
+                    th:text="${app.status}">Status</span>
+            </td>
+            <td th:text="${app.source} ?: 'Direct'">Source</td>
+            <td>
+              <a class="link"
+                 th:href="${app.id != null and !#strings.isEmpty(app.id)} ? @{/view/{id}(id=${app.id})} : @{/view/key/{requestKey}(requestKey=${app.requestKey})}">
+                View Details →
+              </a>
+            </td>
+          </tr>
+          <tr th:if="${applications == null or #lists.isEmpty(applications)}">
+            <td colspan="7">
+              <div class="empty-state">
+                <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.35;">📋</span>
+                No applications yet.
+                <p>Add your first role above to start tracking your progress.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── Market Intelligence (supplementary) ── -->
+    <div class="insights-section-header">Market Intelligence</div>
+
     <div class="insights-row">
       <section class="panel market-panel">
         <div class="market-head">
@@ -74,68 +154,6 @@
       </section>
     </div>
 
-    <section class="hero">
-      <div>
-        <h1>Job Application Tracker</h1>
-        <p>Keep every opportunity organized from first application to final outcome.</p>
-        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Signed in as <strong th:text="${currentUser}">user@example.com</strong></p>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Total Applications</span>
-        <span class="kpi-value" th:text="${applications != null ? #lists.size(applications) : 0}">0</span>
-      </div>
-    </section>
-
-    <p th:if="${message}" class="notice success" th:text="${message}">Message</p>
-
-    <div class="toolbar">
-      <a href="/add" class="btn btn-primary">+ Add Application</a>
-      <form th:action="@{/logout}" method="post">
-        <button type="submit" class="btn btn-secondary">Logout</button>
-      </form>
-    </div>
-
-    <section class="panel table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th>Company</th>
-            <th>Position</th>
-            <th>Date Applied</th>
-            <th>Status</th>
-            <th>Source</th>
-            <th>Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr th:each="app : ${applications}">
-            <td>
-              <form th:action="@{/delete/{id}(id=${app.id})}"
-                    method="post">
-                <button type="submit">-</button>
-              </form>
-            </td>
-            <td th:text="${app.companyName}">Company</td>
-            <td th:text="${app.positionTitle}">Position</td>
-            <td th:text="${app.dateApplied}">Date</td>
-            <td>
-              <span class="status-badge" th:classappend="' status-' + ${#strings.toLowerCase(app.status)}" th:text="${app.status}">Status</span>
-            </td>
-            <td th:text="${app.source} ?: 'Direct'">Source</td>
-            <td>
-              <a class="link"
-                 th:href="${app.id != null and !#strings.isEmpty(app.id)} ? @{/view/{id}(id=${app.id})} : @{/view/key/{requestKey}(requestKey=${app.requestKey})}">
-                Open
-              </a>
-            </td>
-          </tr>
-          <tr th:if="${applications == null or #lists.isEmpty(applications)}">
-            <td colspan="7" class="empty-state">No applications yet. Add your first role to start tracking progress.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
   </main>
 </body>
 </html>

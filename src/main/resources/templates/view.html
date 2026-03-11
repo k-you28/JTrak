@@ -10,26 +10,42 @@
   <link rel="stylesheet" href="/css/app.css"/>
 </head>
 <body>
-  <main class="page-shell">
+  <main class="page-shell" style="max-width: 720px;">
+
+    <nav class="breadcrumb">
+      <a href="/">← Dashboard</a>
+      <span class="breadcrumb-sep">/</span>
+      <span>Application Details</span>
+    </nav>
+
     <section class="hero">
       <div>
-        <h1>Application Details</h1>
-        <p>Everything logged for this role in one place.</p>
+        <h1 th:text="${jobApplication != null ? jobApplication.positionTitle : 'Application Details'}">Application Details</h1>
+        <p th:if="${jobApplication != null}" th:text="${jobApplication.companyName}">Company</p>
+        <p th:if="${jobApplication == null}">Everything logged for this role in one place.</p>
+      </div>
+      <div th:if="${jobApplication != null}">
+        <span class="status-badge"
+              th:classappend="${jobApplication.status != null} ? ' status-' + ${#strings.toLowerCase(jobApplication.status)} : ' status-applied'"
+              th:text="${jobApplication.status} ?: 'APPLIED'">
+          Status
+        </span>
       </div>
     </section>
 
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-    <section class="panel" th:if="${jobApplication}">
+    <section class="panel panel-content" th:if="${jobApplication}">
       <dl class="detail-grid">
         <dt>Company</dt>
-        <dd th:text="${jobApplication.companyName} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.companyName} ?: '—'">—</dd>
 
         <dt>Position</dt>
-        <dd th:text="${jobApplication.positionTitle} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.positionTitle} ?: '—'">—</dd>
 
         <dt>Date Applied</dt>
-        <dd th:text="${jobApplication.dateApplied} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.dateApplied} ?: '—'">—</dd>
+
         <dt>Status</dt>
         <dd>
           <span class="status-badge"
@@ -40,18 +56,18 @@
         </dd>
 
         <dt>Source</dt>
-        <dd th:text="${jobApplication.source} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.source} ?: '—'">—</dd>
 
         <dt>Notes</dt>
-        <dd th:text="${jobApplication.notes} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.notes} ?: '—'">—</dd>
 
         <dt>Request Key</dt>
-        <dd th:text="${jobApplication.requestKey} ?: '-'">-</dd>
+        <dd th:text="${jobApplication.requestKey} ?: '—'">—</dd>
       </dl>
     </section>
 
-    <div class="toolbar" style="margin-top: 0.9rem;">
-      <a href="/" class="btn btn-secondary">Back To List</a>
+    <div class="toolbar" style="margin-top: 1rem;">
+      <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
     </div>
   </main>
 </body>

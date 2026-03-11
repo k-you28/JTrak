@@ -10,7 +10,14 @@
   <link rel="stylesheet" href="/css/app.css"/>
 </head>
 <body>
-  <main class="page-shell">
+  <main class="page-shell" style="max-width: 720px;">
+
+    <nav class="breadcrumb">
+      <a href="/">← Dashboard</a>
+      <span class="breadcrumb-sep">/</span>
+      <span>Add Application</span>
+    </nav>
+
     <section class="hero">
       <div>
         <h1>Add Job Application</h1>
@@ -20,31 +27,36 @@
 
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-    <section class="panel">
+    <section class="panel panel-content">
       <form method="post" th:action="@{/add}" th:object="${application}" class="form-grid">
-        <div>
-          <label>Company Name *</label>
-          <input type="text" th:field="*{companyName}" required/>
+
+        <!-- Company and position side by side -->
+        <div class="form-row">
+          <div>
+            <label>Company Name *</label>
+            <input type="text" th:field="*{companyName}" placeholder="Acme Corp" required/>
+          </div>
+          <div>
+            <label>Position Title *</label>
+            <input type="text" th:field="*{positionTitle}" placeholder="Software Engineer" required/>
+          </div>
         </div>
 
-        <div>
-          <label>Position Title *</label>
-          <input type="text" th:field="*{positionTitle}" required/>
-        </div>
-
-        <div>
-          <label>Date Applied *</label>
-          <input type="date" th:field="*{dateApplied}" required/>
-        </div>
-
-        <div>
-          <label>Status</label>
-          <select th:field="*{status}">
-            <option value="APPLIED">Applied</option>
-            <option value="INTERVIEWING">Interviewing</option>
-            <option value="OFFER">Offer</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
+        <!-- Date and status side by side -->
+        <div class="form-row">
+          <div>
+            <label>Date Applied *</label>
+            <input type="date" th:field="*{dateApplied}" required/>
+          </div>
+          <div>
+            <label>Status</label>
+            <select th:field="*{status}">
+              <option value="APPLIED">Applied</option>
+              <option value="INTERVIEWING">Interviewing</option>
+              <option value="OFFER">Offer</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
         </div>
 
         <div>

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/css/app.css"/>
 </head>
 <body>
-  <main class="page-shell">
+  <main class="page-shell" style="max-width: 480px;">
     <section class="hero">
       <div>
         <h1>Sign In</h1>
@@ -19,21 +19,22 @@
     </section>
 
     <p th:if="${param.error}" class="notice error">Invalid email or password.</p>
-    <p th:if="${param.unverified}" class="notice error">Email is not verified yet. Request a new verification link below.</p>
+    <p th:if="${param.unverified}" class="notice error">Email not verified yet. Use the link below to resend.</p>
     <p th:if="${param.logout}" class="notice success">You have been logged out.</p>
     <p th:if="${message}" class="notice success" th:text="${message}">Message</p>
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-    <section class="panel">
+    <!-- ── Sign-in form ── -->
+    <section class="panel panel-content">
       <form method="post" th:action="@{/login}" class="form-grid">
         <div>
-          <label>Email</label>
-          <input type="email" name="username" required/>
+          <label for="username">Email</label>
+          <input id="username" type="email" name="username" placeholder="you@example.com" required/>
         </div>
 
         <div>
-          <label>Password</label>
-          <input type="password" name="password" required/>
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" placeholder="••••••••" required/>
         </div>
 
         <div class="form-actions">
@@ -43,14 +44,17 @@
       </form>
     </section>
 
-    <section class="panel" style="margin-top: 0.9rem;">
+    <!-- ── Resend verification (secondary action) ── -->
+    <div class="section-divider">Didn't receive a verification email?</div>
+
+    <section class="panel panel-content">
       <form method="post" th:action="@{/resend-verification}" class="form-grid">
         <div>
-          <label>Resend Verification Email</label>
-          <input type="email" name="email" placeholder="you@example.com" required/>
+          <label for="resend-email">Resend Verification Link</label>
+          <input id="resend-email" type="email" name="email" placeholder="you@example.com" required/>
         </div>
         <div class="form-actions">
-          <button type="submit">Resend Link</button>
+          <button type="submit" class="btn btn-secondary" style="color: var(--brand); border-color: #99f6e4;">Resend Link</button>
         </div>
       </form>
     </section>
