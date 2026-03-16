@@ -29,8 +29,7 @@ public class SecurityConfig {
 			.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/css/**", "/register", "/login", "/verify-email", "/resend-verification", "/h2-console/**").permitAll()
-				.requestMatchers("/admin/api-keys/**").permitAll()
-				.requestMatchers("/api/**").permitAll()
+				.requestMatchers("/api/**", "/admin/api-keys/**").authenticated()
 				.anyRequest().authenticated()
 			)
 			.formLogin(form -> form

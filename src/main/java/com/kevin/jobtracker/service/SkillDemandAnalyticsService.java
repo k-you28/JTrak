@@ -9,6 +9,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -32,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -40,43 +42,71 @@ public class SkillDemandAnalyticsService {
 
 	private static final Logger log = LoggerFactory.getLogger(SkillDemandAnalyticsService.class);
 	private static final int MAX_ERROR_LENGTH = 240;
+	private static final int MAX_HTML_CHARS = 500_000;
 	private static final String ERROR_SKILL_NAME = "__ERROR__";
 	private static final String NONE_SKILL_NAME = "none";
-	private static final String ADZUNA_FIXED_QUERY = "software engineer";
 	private static final int ADZUNA_FIXED_RESULTS_PER_PAGE = 20;
 	private static final String ADZUNA_FIXED_SORT_BY = "date";
 	private static final int ADZUNA_FIXED_PAGES_TO_FETCH = 5;
 
+	// Job role identifiers — used as the Adzuna search query and as the DB searchQuery column value.
+	public static final String ROLE_SOFTWARE_ENGINEER = "software engineer";
+	public static final String ROLE_DATA_ENGINEER = "data engineer";
+	public static final String ROLE_AI_ENGINEER = "ai engineer";
+	public static final List<String> ALL_ROLES = List.of(ROLE_SOFTWARE_ENGINEER, ROLE_DATA_ENGINEER, ROLE_AI_ENGINEER);
+
+	// Hardcoded keyword dictionaries for Data Engineer and AI Engineer roles.
+	// Software Engineer uses the configurable dictionary from application.properties.
+	private static final String DATA_ENGINEER_KEYWORDS =
+		"python,sql,spark,hadoop,airflow,kafka,dbt,aws,azure,gcp,databricks,snowflake,redshift," +
+		"bigquery,pandas,numpy,etl,hive,scala,tableau,power bi,docker,kubernetes,bash,linux,git," +
+		"postgresql,mysql,terraform,data warehouse,flink,delta lake,pyspark,data pipeline,data modeling,looker";
+
+	private static final String AI_ENGINEER_KEYWORDS =
+		"python,pytorch,tensorflow,llm,openai,langchain,rag,pinecone,weaviate,faiss,mlops,kubernetes," +
+		"docker,aws,azure,gcp,mlflow,scikit-learn,cuda,machine learning,deep learning,fine-tuning," +
+		"embeddings,prompt engineering,llamaindex,gradio,fastapi,numpy,pandas,transformers,hugging face," +
+		"computer vision,nlp,reinforcement learning,rlhf,anthropic,vector database";
+
+	private static final Map<String, String> DATA_ENGINEER_ALIASES = Map.of(
+		"spark", "pyspark,apache spark",
+		"power bi", "powerbi,power-bi",
+		"airflow", "apache airflow",
+		"kafka", "apache kafka",
+		"gcp", "google cloud,google cloud platform"
+	);
+
+	private static final Map<String, String> AI_ENGINEER_ALIASES = Map.of(
+		"llm", "large language model,generative ai,gen ai,genai",
+		"hugging face", "huggingface",
+		"rag", "retrieval augmented generation,retrieval-augmented generation",
+		"scikit-learn", "sklearn",
+		"mlops", "ml ops,ml-ops"
+	);
+
 	private final RestTemplate restTemplate;
+	private final RestTemplate redirectRestTemplate;
 	private final SkillDemandSnapshotRepository snapshotRepository;
 	private final String adzunaBaseUrl;
 	private final String adzunaAppId;
 	private final String adzunaAppKey;
-	private final String query;
-	private final String where;
-	private final String sortBy;
-	private final int pageStart;
-	private final int maxPages;
-	private final int resultsPerPage;
 	private final long redirectDelayMs;
 	private final String dedupeMode;
 	private final int topN;
 	private final boolean enabled;
-	private final Map<String, Pattern> matchingPatterns;
 
-	private volatile String lastError;
+	/** Pattern maps keyed by role name. Software Engineer uses the configurable dictionary. */
+	private final Map<String, Map<String, Pattern>> patternsByRole;
+
+	/** Per-role in-memory error cache (cleared on successful poll). */
+	private final Map<String, String> lastErrorByRole = new ConcurrentHashMap<>();
 
 	public SkillDemandAnalyticsService(RestTemplate restTemplate,
+	                                   @Qualifier("redirectRestTemplate") RestTemplate redirectRestTemplate,
 	                                   SkillDemandSnapshotRepository snapshotRepository,
 	                                   @Value("${app.adzuna.base-url:https://api.adzuna.com/v1/api/jobs/us/search}") String adzunaBaseUrl,
 	                                   @Value("${app.adzuna.app-id:}") String adzunaAppId,
 	                                   @Value("${app.adzuna.app-key:}") String adzunaAppKey,
-	                                   @Value("${app.skills.query:software engineer}") String query,
-	                                   @Value("${app.skills.where:}") String where,
-	                                   @Value("${app.skills.sort-by:date}") String sortBy,
-	                                   @Value("${app.skills.page:1}") int pageStart,
-	                                   @Value("${app.skills.max-pages:5}") int maxPages,
-	                                   @Value("${app.skills.results-per-page:20}") int resultsPerPage,
 	                                   @Value("${app.skills.redirect-delay-ms:0}") long redirectDelayMs,
 	                                   @Value("${app.skills.dedupe-mode:composite}") String dedupeMode,
 	                                   @Value("${app.skills.top-n:8}") int topN,
@@ -87,55 +117,78 @@ public class SkillDemandAnalyticsService {
 	                                   @Value("${app.skills.alias.kubernetes:k8s}") String aliasKubernetes,
 	                                   @Value("${app.skills.alias.postgresql:postgres}") String aliasPostgresql,
 	                                   @Value("${app.skills.alias.cicd:ci cd,ci-cd,continuous integration,continuous delivery}") String aliasCicd,
-	                                   @Value("${app.skills.alias.csharp:c#,.net,dotnet}") String aliasCsharp) {
+	                                   @Value("${app.skills.alias.csharp:c#,.net,dotnet}") String aliasCsharp,
+	                                   @Value("${app.skills.alias.go:golang}") String aliasGo,
+	                                   @Value("${app.skills.alias.gcp:google cloud,google cloud platform}") String aliasGcp,
+	                                   @Value("${app.skills.alias.machine learning:ml}") String aliasMl,
+	                                   @Value("${app.skills.alias.deep learning:dl}") String aliasDl,
+	                                   @Value("${app.skills.alias.llm:large language model,generative ai,gen ai,genai}") String aliasLlm,
+	                                   @Value("${app.skills.alias.cybersecurity:cyber security,information security,infosec,appsec}") String aliasCybersecurity,
+	                                   @Value("${app.skills.alias.hugging face:huggingface}") String aliasHuggingFace,
+	                                   @Value("${app.skills.alias.elasticsearch:elastic,opensearch}") String aliasElasticsearch,
+	                                   @Value("${app.skills.alias.react native:rn}") String aliasReactNative,
+	                                   @Value("${app.skills.alias.grpc:grpc,gRPC}") String aliasGrpc,
+	                                   @Value("${app.skills.alias.c++:cpp,c plus plus}") String aliasCpp) {
 		this.restTemplate = restTemplate;
+		this.redirectRestTemplate = redirectRestTemplate;
 		this.snapshotRepository = snapshotRepository;
 		this.adzunaBaseUrl = adzunaBaseUrl;
 		this.adzunaAppId = adzunaAppId;
 		this.adzunaAppKey = adzunaAppKey;
-		this.query = query;
-		this.where = where;
-		this.sortBy = sortBy;
-		this.pageStart = Math.max(1, pageStart);
-		this.maxPages = Math.max(1, maxPages);
-		this.resultsPerPage = Math.max(1, resultsPerPage);
 		this.redirectDelayMs = Math.max(0, redirectDelayMs);
 		this.dedupeMode = dedupeMode == null ? "composite" : dedupeMode.trim().toLowerCase(Locale.ROOT);
 		this.topN = Math.max(1, topN);
 		this.enabled = enabled;
-		this.matchingPatterns = buildMatchingPatterns(
-			dictionaryRaw,
-			Map.of(
-				"javascript", aliasJavascript,
-				"typescript", aliasTypescript,
-				"kubernetes", aliasKubernetes,
-				"postgresql", aliasPostgresql,
-				"ci/cd", aliasCicd,
-				"c#", aliasCsharp
-			)
+
+		Map<String, Pattern> sePatterns = buildMatchingPatterns(dictionaryRaw, Map.ofEntries(
+			Map.entry("javascript", aliasJavascript),
+			Map.entry("typescript", aliasTypescript),
+			Map.entry("kubernetes", aliasKubernetes),
+			Map.entry("postgresql", aliasPostgresql),
+			Map.entry("ci/cd", aliasCicd),
+			Map.entry("c#", aliasCsharp),
+			Map.entry("go", aliasGo),
+			Map.entry("gcp", aliasGcp),
+			Map.entry("machine learning", aliasMl),
+			Map.entry("deep learning", aliasDl),
+			Map.entry("llm", aliasLlm),
+			Map.entry("cybersecurity", aliasCybersecurity),
+			Map.entry("hugging face", aliasHuggingFace),
+			Map.entry("elasticsearch", aliasElasticsearch),
+			Map.entry("react native", aliasReactNative),
+			Map.entry("grpc", aliasGrpc),
+			Map.entry("c++", aliasCpp)
+		));
+		Map<String, Pattern> dePatterns = buildMatchingPatterns(DATA_ENGINEER_KEYWORDS, DATA_ENGINEER_ALIASES);
+		Map<String, Pattern> aiPatterns = buildMatchingPatterns(AI_ENGINEER_KEYWORDS, AI_ENGINEER_ALIASES);
+
+		this.patternsByRole = Map.of(
+			ROLE_SOFTWARE_ENGINEER, sePatterns,
+			ROLE_DATA_ENGINEER, dePatterns,
+			ROLE_AI_ENGINEER, aiPatterns
 		);
 	}
 
 	@EventListener(ApplicationReadyEvent.class)
-	@Transactional
 	public void pollOnStartup() {
 		if (!enabled) {
 			return;
 		}
 		log.info(
-			"Skills poll startup config: query='{}', sortBy='{}', pagesToFetch={}, resultsPerPage={}, topN={}, dedupeMode='{}', credentialsPresent={}",
-			ADZUNA_FIXED_QUERY,
-			ADZUNA_FIXED_SORT_BY,
+			"Skills poll startup: roles={}, pagesToFetch={}, resultsPerPage={}, topN={}, dedupeMode='{}', credentialsPresent={}",
+			ALL_ROLES,
 			ADZUNA_FIXED_PAGES_TO_FETCH,
 			ADZUNA_FIXED_RESULTS_PER_PAGE,
 			topN,
 			dedupeMode,
 			hasCredentials()
 		);
-		try {
-			fetchAndStoreNow();
-		} catch (Exception e) {
-			log.warn("Startup skills poll failed: {}", sanitizeError(e));
+		for (String role : ALL_ROLES) {
+			try {
+				fetchAndStoreForRole(role);
+			} catch (Exception e) {
+				log.warn("Startup skills poll failed for role '{}': {}", role, sanitizeError(e));
+			}
 		}
 	}
 
@@ -143,23 +196,29 @@ public class SkillDemandAnalyticsService {
 		fixedDelayString = "${app.skills.poll-interval-ms:900000}",
 		initialDelayString = "${app.skills.poll-interval-ms:900000}"
 	)
-	@Transactional
 	public void pollOnInterval() {
 		if (!enabled) {
 			return;
 		}
-		try {
-			fetchAndStoreNow();
-		} catch (Exception e) {
-			log.warn("Scheduled skills poll failed: {}", sanitizeError(e));
+		for (String role : ALL_ROLES) {
+			try {
+				fetchAndStoreForRole(role);
+			} catch (Exception e) {
+				log.warn("Scheduled skills poll failed for role '{}': {}", role, sanitizeError(e));
+			}
 		}
 	}
 
-	@Transactional
-	public List<SkillDemandSnapshot> fetchAndStoreNow() {
+	/** Fetches postings and persists skill snapshots for a single role. */
+	// Not @Transactional — HTTP fetches must not hold an open DB transaction.
+	public List<SkillDemandSnapshot> fetchAndStoreForRole(String role) {
+		Map<String, Pattern> patterns = patternsByRole.get(role);
+		if (patterns == null) {
+			throw new IllegalArgumentException("Unknown role: " + role);
+		}
 		Instant runAt = Instant.now();
 		try {
-			List<JobPosting> rawPostings = fetchAdzunaPostings();
+			List<JobPosting> rawPostings = fetchAdzunaPostings(role);
 			List<JobPosting> postings = dedupePostings(rawPostings);
 			List<String> descriptionTexts = new ArrayList<>();
 			for (JobPosting posting : postings) {
@@ -171,7 +230,7 @@ public class SkillDemandAnalyticsService {
 				sleepBetweenRedirectFetches();
 			}
 
-			Map<String, Integer> counts = computeSkillCounts(descriptionTexts);
+			Map<String, Integer> counts = computeSkillCounts(descriptionTexts, patterns);
 			List<Map.Entry<String, Integer>> top = counts.entrySet().stream()
 				.sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
 					.thenComparing(Map.Entry.comparingByKey()))
@@ -182,94 +241,92 @@ public class SkillDemandAnalyticsService {
 			for (int i = 0; i < top.size(); i++) {
 				Map.Entry<String, Integer> entry = top.get(i);
 				snapshots.add(new SkillDemandSnapshot(
-					ADZUNA_FIXED_QUERY,
-					1,
-					entry.getKey(),
-					entry.getValue(),
-					descriptionTexts.size(),
-					i + 1,
-					runAt,
-					null
+					role, 1, entry.getKey(), entry.getValue(),
+					descriptionTexts.size(), i + 1, runAt, null
 				));
 			}
 			if (snapshots.isEmpty()) {
-				snapshots.add(new SkillDemandSnapshot(ADZUNA_FIXED_QUERY, 1, NONE_SKILL_NAME, 0, descriptionTexts.size(), 1, runAt, null));
+				snapshots.add(new SkillDemandSnapshot(role, 1, NONE_SKILL_NAME, 0, descriptionTexts.size(), 1, runAt, null));
 			}
-			lastError = null;
+			lastErrorByRole.remove(role);
 			log.info(
-				"Skills poll completed: {} raw postings, {} deduped postings, {} extracted descriptions, {} ranked skills",
-				rawPostings.size(),
-				postings.size(),
-				descriptionTexts.size(),
-				top.size()
+				"Skills poll completed for role='{}': {} raw postings, {} deduped, {} descriptions, {} ranked skills",
+				role, rawPostings.size(), postings.size(), descriptionTexts.size(), top.size()
 			);
-			return snapshotRepository.saveAll(snapshots);
+			return persistSnapshots(snapshots);
 		} catch (Exception e) {
 			String error = sanitizeError(e);
-			lastError = error;
-			log.warn("Skill demand polling failed: {}", error);
+			lastErrorByRole.put(role, error);
+			log.warn("Skill demand polling failed for role='{}': {}", role, error);
 			SkillDemandSnapshot failure = new SkillDemandSnapshot(
-				ADZUNA_FIXED_QUERY,
-				1,
-				ERROR_SKILL_NAME,
-				0,
-				0,
-				0,
-				runAt,
-				error
+				role, 1, ERROR_SKILL_NAME, 0, 0, 0, runAt, error
 			);
-			return Collections.singletonList(snapshotRepository.save(failure));
+			return Collections.singletonList(persistSnapshot(failure));
 		}
 	}
 
+	@Transactional
+	public List<SkillDemandSnapshot> persistSnapshots(List<SkillDemandSnapshot> snapshots) {
+		return snapshotRepository.saveAll(snapshots);
+	}
+
+	@Transactional
+	public SkillDemandSnapshot persistSnapshot(SkillDemandSnapshot snapshot) {
+		return snapshotRepository.save(snapshot);
+	}
+
 	@Transactional(readOnly = true)
-	public List<TopSkill> latestTopSkills() {
-		Optional<SkillDemandSnapshot> latestSuccess = snapshotRepository.findTopBySkillNameNotOrderByCreatedAtDesc(ERROR_SKILL_NAME);
+	public List<TopSkill> latestTopSkills(String role) {
+		Optional<SkillDemandSnapshot> latestSuccess =
+			snapshotRepository.findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(role, ERROR_SKILL_NAME);
 		if (latestSuccess.isEmpty()) {
 			return Collections.emptyList();
 		}
-		return snapshotRepository.findByCreatedAtOrderByRankPositionAsc(latestSuccess.get().getCreatedAt()).stream()
-			.filter(snapshot -> snapshot.getRankPosition() > 0)
-			.filter(snapshot -> !NONE_SKILL_NAME.equalsIgnoreCase(snapshot.getSkillName()))
-			.map(snapshot -> new TopSkill(snapshot.getSkillName(), snapshot.getOccurrenceCount(), snapshot.getRankPosition()))
+		return snapshotRepository.findBySearchQueryAndCreatedAtOrderByRankPositionAsc(role, latestSuccess.get().getCreatedAt()).stream()
+			.filter(s -> s.getRankPosition() > 0)
+			.filter(s -> !NONE_SKILL_NAME.equalsIgnoreCase(s.getSkillName()))
+			.map(s -> new TopSkill(s.getSkillName(), s.getOccurrenceCount(), s.getRankPosition()))
 			.collect(Collectors.toList());
 	}
 
 	@Transactional(readOnly = true)
-	public int latestSampleJobs() {
-		Optional<SkillDemandSnapshot> latestSuccess = snapshotRepository.findTopBySkillNameNotOrderByCreatedAtDesc(ERROR_SKILL_NAME);
+	public int latestSampleJobs(String role) {
+		Optional<SkillDemandSnapshot> latestSuccess =
+			snapshotRepository.findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(role, ERROR_SKILL_NAME);
 		if (latestSuccess.isEmpty()) {
 			return 0;
 		}
-		return snapshotRepository.findByCreatedAtOrderByRankPositionAsc(latestSuccess.get().getCreatedAt()).stream()
+		return snapshotRepository.findBySearchQueryAndCreatedAtOrderByRankPositionAsc(role, latestSuccess.get().getCreatedAt()).stream()
 			.findFirst()
 			.map(SkillDemandSnapshot::getSampleJobs)
 			.orElse(0);
 	}
 
 	@Transactional(readOnly = true)
-	public boolean latestNoMatchesInSample() {
-		Optional<SkillDemandSnapshot> latestSuccess = snapshotRepository.findTopBySkillNameNotOrderByCreatedAtDesc(ERROR_SKILL_NAME);
+	public boolean latestNoMatchesInSample(String role) {
+		Optional<SkillDemandSnapshot> latestSuccess =
+			snapshotRepository.findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(role, ERROR_SKILL_NAME);
 		if (latestSuccess.isEmpty()) {
 			return false;
 		}
-		return snapshotRepository.findByCreatedAtOrderByRankPositionAsc(latestSuccess.get().getCreatedAt()).stream()
-			.anyMatch(snapshot -> NONE_SKILL_NAME.equalsIgnoreCase(snapshot.getSkillName()) && snapshot.getSampleJobs() > 0);
+		return snapshotRepository.findBySearchQueryAndCreatedAtOrderByRankPositionAsc(role, latestSuccess.get().getCreatedAt()).stream()
+			.anyMatch(s -> NONE_SKILL_NAME.equalsIgnoreCase(s.getSkillName()) && s.getSampleJobs() > 0);
 	}
 
 	@Transactional(readOnly = true)
-	public Instant lastUpdatedAt() {
-		return snapshotRepository.findTopBySkillNameNotOrderByCreatedAtDesc(ERROR_SKILL_NAME)
+	public Instant lastUpdatedAt(String role) {
+		return snapshotRepository.findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(role, ERROR_SKILL_NAME)
 			.map(SkillDemandSnapshot::getCreatedAt)
 			.orElse(null);
 	}
 
 	@Transactional(readOnly = true)
-	public String lastError() {
-		if (lastError != null) {
-			return lastError;
+	public String lastError(String role) {
+		String cached = lastErrorByRole.get(role);
+		if (cached != null) {
+			return cached;
 		}
-		return snapshotRepository.findTopByOrderByCreatedAtDesc()
+		return snapshotRepository.findTopBySearchQueryOrderByCreatedAtDesc(role)
 			.map(SkillDemandSnapshot::getErrorMessage)
 			.orElse(null);
 	}
@@ -278,33 +335,30 @@ public class SkillDemandAnalyticsService {
 		return ADZUNA_FIXED_PAGES_TO_FETCH;
 	}
 
-	private List<JobPosting> fetchAdzunaPostings() {
+	public List<String> allRoles() {
+		return ALL_ROLES;
+	}
+
+	private List<JobPosting> fetchAdzunaPostings(String searchQuery) {
 		if (!hasCredentials()) {
 			throw new IllegalStateException("Missing Adzuna app_id/app_key configuration");
 		}
-		log.info(
-			"Skills Adzuna credentials: app_id_present={}, app_key_present={}, app_key_length={}",
-			adzunaAppId != null && !adzunaAppId.isBlank(),
-			adzunaAppKey != null && !adzunaAppKey.isBlank(),
-			adzunaAppKey == null ? 0 : adzunaAppKey.length()
-		);
 		String baseUrl = adzunaBaseUrl.endsWith("/") ? adzunaBaseUrl : adzunaBaseUrl + "/";
-		int pagesToFetch = ADZUNA_FIXED_PAGES_TO_FETCH;
 		List<JobPosting> allJobs = new ArrayList<>();
-		for (int page = 1; page <= pagesToFetch; page++) {
+		for (int page = 1; page <= ADZUNA_FIXED_PAGES_TO_FETCH; page++) {
 			URI uri = UriComponentsBuilder.fromHttpUrl(baseUrl + page)
 				.queryParam("app_id", adzunaAppId)
 				.queryParam("app_key", adzunaAppKey)
-				.queryParam("what", ADZUNA_FIXED_QUERY)
+				.queryParam("what", searchQuery)
 				.queryParam("results_per_page", ADZUNA_FIXED_RESULTS_PER_PAGE)
 				.queryParam("sort_by", ADZUNA_FIXED_SORT_BY)
 				.encode()
 				.build()
 				.toUri();
-			log.info("Skills Adzuna GET: {}", maskSecretsInUrl(uri.toString()));
+			log.info("Skills Adzuna GET (role='{}'): {}", searchQuery, maskSecretsInUrl(uri.toString()));
 			JsonNode response = restTemplate.getForObject(uri, JsonNode.class);
 			JsonNode results = response == null ? null : response.path("results");
-			logAdzunaResponseShape(page, response, results);
+			logAdzunaResponseShape(page, searchQuery, response, results);
 			if (results == null || !results.isArray() || results.isEmpty()) {
 				break;
 			}
@@ -328,7 +382,11 @@ public class SkillDemandAnalyticsService {
 			return fallback;
 		}
 		try {
-			String html = restTemplate.getForObject(posting.redirectUrl(), String.class);
+			String html = redirectRestTemplate.getForObject(posting.redirectUrl(), String.class);
+			if (html != null && html.length() > MAX_HTML_CHARS) {
+				log.debug("Truncating oversized HTML ({} chars) from {}", html.length(), posting.redirectUrl());
+				html = html.substring(0, MAX_HTML_CHARS);
+			}
 			String extracted = extractDescriptionFromHtml(html);
 			return extracted.isBlank() ? fallback : extracted;
 		} catch (Exception e) {
@@ -422,11 +480,11 @@ public class SkillDemandAnalyticsService {
 		return value.trim().toLowerCase(Locale.ROOT);
 	}
 
-	private Map<String, Integer> computeSkillCounts(List<String> normalizedDescriptions) {
+	private Map<String, Integer> computeSkillCounts(List<String> normalizedDescriptions, Map<String, Pattern> patterns) {
 		Map<String, Integer> counts = new HashMap<>();
 		for (String description : normalizedDescriptions) {
 			Set<String> matchedSkills = new HashSet<>();
-			for (Map.Entry<String, Pattern> entry : matchingPatterns.entrySet()) {
+			for (Map.Entry<String, Pattern> entry : patterns.entrySet()) {
 				if (entry.getValue().matcher(description).find()) {
 					matchedSkills.add(entry.getKey());
 				}
@@ -462,15 +520,15 @@ public class SkillDemandAnalyticsService {
 			}
 		}
 
-		Map<String, Pattern> patterns = new LinkedHashMap<>();
+		Map<String, Pattern> result = new LinkedHashMap<>();
 		for (Map.Entry<String, Set<String>> entry : variantsByCanonical.entrySet()) {
 			String alternation = entry.getValue().stream()
 				.sorted((a, b) -> Integer.compare(b.length(), a.length()))
 				.map(Pattern::quote)
 				.collect(Collectors.joining("|"));
-			patterns.put(entry.getKey(), Pattern.compile("(^|\\s)(" + alternation + ")(\\s|$)"));
+			result.put(entry.getKey(), Pattern.compile("(^|\\s)(" + alternation + ")(\\s|$)"));
 		}
-		return patterns;
+		return result;
 	}
 
 	private static List<String> splitCsv(String raw) {
@@ -501,7 +559,7 @@ public class SkillDemandAnalyticsService {
 	private static String sanitizeError(Exception e) {
 		String message;
 		if (e instanceof RestClientResponseException responseException) {
-			message = "HTTP " + responseException.getRawStatusCode() + " " + responseException.getStatusText();
+			message = "HTTP " + responseException.getStatusCode().value() + " " + responseException.getStatusText();
 		} else {
 			String raw = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
 			message = e.getClass().getSimpleName() + ": " + raw;
@@ -510,9 +568,9 @@ public class SkillDemandAnalyticsService {
 		return message.length() > MAX_ERROR_LENGTH ? message.substring(0, MAX_ERROR_LENGTH) : message;
 	}
 
-	private void logAdzunaResponseShape(int page, JsonNode response, JsonNode results) {
+	private void logAdzunaResponseShape(int page, String role, JsonNode response, JsonNode results) {
 		if (response == null) {
-			log.warn("Skills Adzuna response was null for page={}", page);
+			log.warn("Skills Adzuna response was null for role='{}' page={}", role, page);
 			return;
 		}
 		long count = response.path("count").asLong(-1);
@@ -521,13 +579,8 @@ public class SkillDemandAnalyticsService {
 		String message = response.path("message").asText("");
 		String error = response.path("error").asText("");
 		log.info(
-			"Skills Adzuna response page={} count={} hasResultsArray={} resultsSize={} message='{}' error='{}'",
-			page,
-			count,
-			hasResultsArray,
-			resultsSize,
-			trimForLog(message, 160),
-			trimForLog(error, 160)
+			"Skills Adzuna response role='{}' page={} count={} resultsSize={} message='{}' error='{}'",
+			role, page, count, resultsSize, trimForLog(message, 160), trimForLog(error, 160)
 		);
 	}
 
@@ -549,10 +602,7 @@ public class SkillDemandAnalyticsService {
 			return "";
 		}
 		String compact = value.replaceAll("\\s+", " ").trim();
-		if (compact.length() <= maxLen) {
-			return compact;
-		}
-		return compact.substring(0, maxLen);
+		return compact.length() <= maxLen ? compact : compact.substring(0, maxLen);
 	}
 
 	public record TopSkill(String skill, int count, int rank) {}
