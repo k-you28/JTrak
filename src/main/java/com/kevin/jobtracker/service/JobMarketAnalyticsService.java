@@ -16,9 +16,16 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class JobMarketAnalyticsService {
@@ -184,6 +191,80 @@ public class JobMarketAnalyticsService {
 		return new MarketSignalSummary("OK", "health-ok");
 	}
 
+	/**
+	 * Fetches the last 30 days of snapshots from the DB, compresses to one per day,
+	 * and computes the SVG polyline points and axis labels for the trend chart.
+	 */
+	@Transactional(readOnly = true)
+	public TrendData buildTrendData() {
+		Instant cutoff = Instant.now().minusSeconds(30L * 24 * 60 * 60);
+		List<JobMarketSnapshot> snapshots = compressToDailyLatest(
+			snapshotsSince(cutoff)
+		);
+		int maxJobs = snapshots.stream().mapToInt(JobMarketSnapshot::getTotalJobs).max().orElse(1);
+		String points = buildTrendPoints(snapshots, maxJobs);
+		List<String> axisLabels = buildAxisLabels(snapshots);
+		return new TrendData(snapshots, maxJobs, points, axisLabels);
+	}
+
+	private static List<JobMarketSnapshot> compressToDailyLatest(List<JobMarketSnapshot> snapshots) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return Collections.emptyList();
+		}
+		LinkedHashMap<LocalDate, JobMarketSnapshot> byDay = new LinkedHashMap<>();
+		ZoneId zone = ZoneId.systemDefault();
+		for (JobMarketSnapshot snapshot : snapshots) {
+			LocalDate day = snapshot.getCreatedAt().atZone(zone).toLocalDate();
+			byDay.put(day, snapshot);
+		}
+		List<JobMarketSnapshot> daily = new ArrayList<>(byDay.values());
+		daily.sort(Comparator.comparing(JobMarketSnapshot::getCreatedAt));
+		return daily;
+	}
+
+	private static String buildTrendPoints(List<JobMarketSnapshot> snapshots, int maxJobs) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return "";
+		}
+		int width = 360;
+		int height = 120;
+		int padding = 10;
+		int usableWidth = width - (padding * 2);
+		int usableHeight = height - (padding * 2);
+		int denominator = Math.max(maxJobs, 1);
+
+		if (snapshots.size() == 1) {
+			int y = height - padding - (snapshots.get(0).getTotalJobs() * usableHeight / denominator);
+			return (width / 2) + "," + y;
+		}
+
+		return java.util.stream.IntStream.range(0, snapshots.size())
+			.mapToObj(i -> {
+				JobMarketSnapshot snap = snapshots.get(i);
+				int x = padding + (i * usableWidth / (snapshots.size() - 1));
+				int y = height - padding - (snap.getTotalJobs() * usableHeight / denominator);
+				return x + "," + y;
+			})
+			.collect(Collectors.joining(" "));
+	}
+
+	private static List<String> buildAxisLabels(List<JobMarketSnapshot> snapshots) {
+		if (snapshots == null || snapshots.isEmpty()) {
+			return Collections.emptyList();
+		}
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d");
+		ZoneId zone = ZoneId.systemDefault();
+		List<String> labels = new ArrayList<>();
+		int[] idx = new int[] {0, snapshots.size() / 3, (snapshots.size() * 2) / 3, snapshots.size() - 1};
+		for (int i : idx) {
+			String label = snapshots.get(i).getCreatedAt().atZone(zone).toLocalDate().format(formatter);
+			if (labels.isEmpty() || !labels.get(labels.size() - 1).equals(label)) {
+				labels.add(label);
+			}
+		}
+		return labels;
+	}
+
 	private static String sanitizeError(Exception e) {
 		String message;
 		if (e instanceof RestClientResponseException responseException) {
@@ -208,5 +289,12 @@ public class JobMarketAnalyticsService {
 	public record MarketSignalSummary(
 		String label,
 		String cssClass
+	) {}
+
+	public record TrendData(
+		List<JobMarketSnapshot> snapshots,
+		int maxJobs,
+		String points,
+		List<String> axisLabels
 	) {}
 }

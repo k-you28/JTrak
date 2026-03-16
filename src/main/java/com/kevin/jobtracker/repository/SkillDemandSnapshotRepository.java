@@ -8,8 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SkillDemandSnapshotRepository extends JpaRepository<SkillDemandSnapshot, String> {
-	Optional<SkillDemandSnapshot> findTopByOrderByCreatedAtDesc();
-	Optional<SkillDemandSnapshot> findTopBySkillNameNotOrderByCreatedAtDesc(String excludedSkillName);
-	List<SkillDemandSnapshot> findByCreatedAtOrderByRankPositionAsc(Instant createdAt);
-	List<SkillDemandSnapshot> findByCreatedAtGreaterThanEqualOrderByCreatedAtAsc(Instant createdAt);
+
+	/** Role-filtered variants — required now that multiple job roles share the same table. */
+	Optional<SkillDemandSnapshot> findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(String searchQuery, String excludedSkillName);
+	Optional<SkillDemandSnapshot> findTopBySearchQueryOrderByCreatedAtDesc(String searchQuery);
+	List<SkillDemandSnapshot> findBySearchQueryAndCreatedAtOrderByRankPositionAsc(String searchQuery, Instant createdAt);
 }

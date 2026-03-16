@@ -2,13 +2,20 @@ package com.kevin.jobtracker.controller;
 
 import com.kevin.jobtracker.entity.JobApplication;
 import com.kevin.jobtracker.entity.JobMarketSnapshot;
+import com.kevin.jobtracker.entity.UserResume;
+import com.kevin.jobtracker.model.FollowUpItem;
+import com.kevin.jobtracker.model.HrLensAnalysisDto;
 import com.kevin.jobtracker.model.JobApplicationRequest;
+import com.kevin.jobtracker.service.FollowUpService;
 import com.kevin.jobtracker.service.HackerNewsService;
+import com.kevin.jobtracker.service.HrLensService;
 import com.kevin.jobtracker.service.JobApplicationService;
 import com.kevin.jobtracker.service.JobMarketAnalyticsService;
 import com.kevin.jobtracker.service.SkillDemandAnalyticsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,37 +23,39 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.ArrayList;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 import java.security.Principal;
 
 @Controller
 public class WebUiController {
 
+	private static final Logger log = LoggerFactory.getLogger(WebUiController.class);
+
 	private final JobApplicationService applicationService;
 	private final JobMarketAnalyticsService jobMarketAnalyticsService;
 	private final HackerNewsService hackerNewsService;
 	private final SkillDemandAnalyticsService skillDemandAnalyticsService;
+	private final HrLensService hrLensService;
+	private final FollowUpService followUpService;
 
 	public WebUiController(JobApplicationService applicationService,
 	                       JobMarketAnalyticsService jobMarketAnalyticsService,
 	                       HackerNewsService hackerNewsService,
-	                       SkillDemandAnalyticsService skillDemandAnalyticsService) {
+	                       SkillDemandAnalyticsService skillDemandAnalyticsService,
+	                       HrLensService hrLensService,
+	                       FollowUpService followUpService) {
 		this.applicationService = applicationService;
 		this.jobMarketAnalyticsService = jobMarketAnalyticsService;
 		this.hackerNewsService = hackerNewsService;
 		this.skillDemandAnalyticsService = skillDemandAnalyticsService;
+		this.hrLensService = hrLensService;
+		this.followUpService = followUpService;
 	}
 
 	@ModelAttribute("currentUser")
@@ -59,40 +68,123 @@ public class WebUiController {
 		disableCache(response);
 		List<JobApplication> applications = applicationService.listAll(principal.getName());
 		JobMarketSnapshot latestSnapshot = jobMarketAnalyticsService.latestSnapshot().orElse(null);
-		List<JobMarketSnapshot> trendSnapshots = capToLastMonthIfNeeded(
-			compressToDailyLatest(jobMarketAnalyticsService.snapshotsSince(Instant.EPOCH))
-		);
-		JobMarketAnalyticsService.MarketSignalSummary signalSummary = jobMarketAnalyticsService.buildMarketSignalSummary(trendSnapshots);
+		JobMarketAnalyticsService.TrendData trend = jobMarketAnalyticsService.buildTrendData();
+		JobMarketAnalyticsService.MarketSignalSummary signalSummary = jobMarketAnalyticsService.buildMarketSignalSummary(trend.snapshots());
 		List<HackerNewsService.NewsStory> topStories = hackerNewsService.latestStories();
-		int maxTrendJobs = trendSnapshots.stream().mapToInt(JobMarketSnapshot::getTotalJobs).max().orElse(1);
-		String trendPoints = buildTrendPoints(trendSnapshots, maxTrendJobs);
-		List<String> trendAxisLabels = buildAxisLabels(trendSnapshots);
+		DateTimeFormatter displayFmt = DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm");
 		model.addAttribute("applications", applications);
 		model.addAttribute("latestMarketSnapshot", latestSnapshot);
-		model.addAttribute("marketTrendSnapshots", trendSnapshots);
-		model.addAttribute("marketTrendMax", Math.max(maxTrendJobs, 1));
-		model.addAttribute("marketTrendPoints", trendPoints);
-		model.addAttribute("marketTrendAxisLabels", trendAxisLabels);
+		model.addAttribute("marketTrendSnapshots", trend.snapshots());
+		model.addAttribute("marketTrendMax", trend.maxJobs());
+		model.addAttribute("marketTrendPoints", trend.points());
+		model.addAttribute("marketTrendAxisLabels", trend.axisLabels());
 		model.addAttribute("marketHealthLabel", signalSummary.label());
 		model.addAttribute("marketHealthClass", signalSummary.cssClass());
 		model.addAttribute("marketLastUpdated", latestSnapshot != null
-			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(latestSnapshot.getCreatedAt().atZone(ZoneId.systemDefault()))
+			? displayFmt.format(latestSnapshot.getCreatedAt().atZone(ZoneId.systemDefault()))
 			: "n/a");
 		model.addAttribute("newsStories", topStories);
 		model.addAttribute("newsLastUpdated", hackerNewsService.lastUpdatedAt() != null
-			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(hackerNewsService.lastUpdatedAt().atZone(ZoneId.systemDefault()))
+			? displayFmt.format(hackerNewsService.lastUpdatedAt().atZone(ZoneId.systemDefault()))
 			: "n/a");
 		model.addAttribute("newsError", hackerNewsService.lastError());
-		model.addAttribute("topSkills", skillDemandAnalyticsService.latestTopSkills());
-		model.addAttribute("topSkillsLastUpdated", skillDemandAnalyticsService.lastUpdatedAt() != null
-			? DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm").format(skillDemandAnalyticsService.lastUpdatedAt().atZone(ZoneId.systemDefault()))
-			: "n/a");
-		model.addAttribute("topSkillsError", skillDemandAnalyticsService.lastError());
-		model.addAttribute("topSkillsSampleJobs", skillDemandAnalyticsService.latestSampleJobs());
-		model.addAttribute("topSkillsNoMatches", skillDemandAnalyticsService.latestNoMatchesInSample());
 		model.addAttribute("topSkillsMaxPages", skillDemandAnalyticsService.configuredMaxPages());
+
+		// Build per-role skill data for the dropdown selector.
+		List<RoleSkillsData> skillRoles = buildRoleSkillsData(displayFmt);
+		model.addAttribute("skillRoles", skillRoles);
+
+		// Follow-up: detect stale applications and surface any saved drafts
+		model.addAttribute("staleApps", followUpService.findStaleForUser(principal.getName()));
+
+		// HR Lens: load stored resume and parse structured analysis for the current user
+		Optional<UserResume> userResume = hrLensService.findForUser(principal.getName());
+		model.addAttribute("userResume", userResume.orElse(null));
+		HrLensAnalysisDto hrLensAnalysis = userResume
+			.map(UserResume::getAnalysisText)
+			.filter(t -> t != null && !t.isBlank())
+			.map(hrLensService::parseAnalysis)
+			.orElse(null);
+		model.addAttribute("hrLensAnalysis", hrLensAnalysis);
+		model.addAttribute("hrLensAnalyzedAt",
+			userResume.flatMap(r -> Optional.ofNullable(r.getAnalyzedAt()))
+				.map(t -> displayFmt.format(t.atZone(ZoneId.systemDefault())))
+				.orElse(null));
+
 		return "index";
 	}
+
+	@PostMapping("/follow-up/{id}/draft")
+	public String generateFollowUpDraft(@PathVariable("id") String id,
+	                                    RedirectAttributes redirectAttributes,
+	                                    Principal principal) {
+		try {
+			followUpService.generateDraft(id, principal.getName());
+			redirectAttributes.addFlashAttribute("message", "Follow-up email draft generated.");
+		} catch (IllegalArgumentException e) {
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (Exception e) {
+			log.error("Follow-up draft generation failed appId={} user={}: {}",
+				id, principal.getName(), e.getMessage(), e);
+			redirectAttributes.addFlashAttribute("error", "Draft generation failed. Please try again.");
+		}
+		return "redirect:/";
+	}
+
+	@PostMapping("/resume/upload")
+	public String uploadResume(@RequestParam("resume") MultipartFile resume,
+	                           RedirectAttributes redirectAttributes,
+	                           Principal principal) {
+		try {
+			hrLensService.uploadAndAnalyze(resume, principal.getName());
+			redirectAttributes.addFlashAttribute("message", "Resume uploaded and analyzed successfully.");
+		} catch (IllegalArgumentException e) {
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (Exception e) {
+			log.error("HR Lens upload failed for {}: {}", principal.getName(), e.getMessage(), e);
+			redirectAttributes.addFlashAttribute("error", "Resume analysis failed. Please try again.");
+		}
+		return "redirect:/";
+	}
+
+	private List<RoleSkillsData> buildRoleSkillsData(DateTimeFormatter displayFmt) {
+		return skillDemandAnalyticsService.allRoles().stream().map(role -> {
+			String label = toRoleLabel(role);
+			String roleId = role.replace(' ', '-');
+			var skills = skillDemandAnalyticsService.latestTopSkills(role);
+			int sampleJobs = skillDemandAnalyticsService.latestSampleJobs(role);
+			boolean noMatches = skillDemandAnalyticsService.latestNoMatchesInSample(role);
+			var updatedAt = skillDemandAnalyticsService.lastUpdatedAt(role);
+			String lastUpdated = updatedAt != null
+				? displayFmt.format(updatedAt.atZone(ZoneId.systemDefault()))
+				: "n/a";
+			String error = skillDemandAnalyticsService.lastError(role);
+			return new RoleSkillsData(label, roleId, role, skills, sampleJobs, noMatches, lastUpdated, error);
+		}).toList();
+	}
+
+	private static String toRoleLabel(String role) {
+		// Convert "software engineer" → "Software Engineer"
+		String[] words = role.split(" ");
+		StringBuilder sb = new StringBuilder();
+		for (String word : words) {
+			if (!sb.isEmpty()) sb.append(' ');
+			sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+		}
+		return sb.toString();
+	}
+
+	/** Data container for one job role's skill analytics, passed to the Thymeleaf template. */
+	public record RoleSkillsData(
+		String label,       // "Software Engineer"
+		String roleId,      // "software-engineer" (used as HTML element ID)
+		String query,       // "software engineer" (Adzuna search query)
+		List<SkillDemandAnalyticsService.TopSkill> skills,
+		int sampleJobs,
+		boolean noMatches,
+		String lastUpdated,
+		String error
+	) {}
 
 	@GetMapping("/add")
 	public String addForm(Model model, HttpServletResponse response) {
@@ -116,8 +208,26 @@ public class WebUiController {
 		return "redirect:/";
 	}
 
+	@PostMapping("/update-status/{id}")
+	public String updateStatus(@PathVariable("id") String id,
+	                           @RequestParam("status") String status,
+	                           @RequestParam(name = "redirectTo", defaultValue = "/") String redirectTo,
+	                           RedirectAttributes redirectAttributes,
+	                           Principal principal) {
+		// Guard against open-redirect: only allow local relative paths.
+		String safePath = (redirectTo != null && redirectTo.startsWith("/") && !redirectTo.contains("://"))
+			? redirectTo : "/";
+		try {
+			applicationService.updateStatus(id, status, principal.getName());
+			redirectAttributes.addFlashAttribute("message", "Status updated.");
+		} catch (Exception e) {
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		}
+		return "redirect:" + safePath;
+	}
+
 	@PostMapping("/delete/{id}")
-	public String delete(@PathVariable String id, RedirectAttributes redirectAttributes, Principal principal) {
+	public String delete(@PathVariable("id") String id, RedirectAttributes redirectAttributes, Principal principal) {
 		try {
 			applicationService.deleteById(id, principal.getName());
 			redirectAttributes.addFlashAttribute("message", "Application deleted.");
@@ -128,8 +238,8 @@ public class WebUiController {
 	}
 
 	@GetMapping("/view")
-	public String view(@RequestParam(required = false) String id,
-	                  @RequestParam(required = false) String requestKey,
+	public String view(@RequestParam(name = "id", required = false) String id,
+	                  @RequestParam(name = "requestKey", required = false) String requestKey,
 	                  Model model,
 	                  HttpServletResponse response,
 	                  Principal principal) {
@@ -145,13 +255,13 @@ public class WebUiController {
 	}
 
 	@GetMapping("/view/{id}")
-	public String viewById(@PathVariable String id, Model model, HttpServletResponse response, Principal principal) {
+	public String viewById(@PathVariable("id") String id, Model model, HttpServletResponse response, Principal principal) {
 		disableCache(response);
 		return renderById(id, model, principal.getName());
 	}
 
 	@GetMapping("/view/key/{requestKey}")
-	public String viewByRequestKey(@PathVariable String requestKey, Model model, HttpServletResponse response, Principal principal) {
+	public String viewByRequestKey(@PathVariable("requestKey") String requestKey, Model model, HttpServletResponse response, Principal principal) {
 		disableCache(response);
 		return renderByRequestKey(requestKey, model, principal.getName());
 	}
@@ -181,78 +291,4 @@ public class WebUiController {
 		model.addAttribute("jobApplication", app.get());
 		return "view";
 	}
-
-	private static String buildTrendPoints(List<JobMarketSnapshot> snapshots, int maxJobs) {
-		if (snapshots == null || snapshots.isEmpty()) {
-			return "";
-		}
-		int width = 360;
-		int height = 120;
-		int padding = 10;
-		int usableWidth = width - (padding * 2);
-		int usableHeight = height - (padding * 2);
-		int denominator = Math.max(maxJobs, 1);
-
-		if (snapshots.size() == 1) {
-			int y = height - padding - (snapshots.get(0).getTotalJobs() * usableHeight / denominator);
-			return (width / 2) + "," + y;
-		}
-
-		return java.util.stream.IntStream.range(0, snapshots.size())
-			.mapToObj(i -> {
-				JobMarketSnapshot snap = snapshots.get(i);
-				int x = padding + (i * usableWidth / (snapshots.size() - 1));
-				int y = height - padding - (snap.getTotalJobs() * usableHeight / denominator);
-				return x + "," + y;
-			})
-			.collect(Collectors.joining(" "));
-	}
-
-	private static List<JobMarketSnapshot> compressToDailyLatest(List<JobMarketSnapshot> snapshots) {
-		if (snapshots == null || snapshots.isEmpty()) {
-			return Collections.emptyList();
-		}
-		LinkedHashMap<LocalDate, JobMarketSnapshot> byDay = new LinkedHashMap<>();
-		ZoneId zone = ZoneId.systemDefault();
-		for (JobMarketSnapshot snapshot : snapshots) {
-			LocalDate day = snapshot.getCreatedAt().atZone(zone).toLocalDate();
-			byDay.put(day, snapshot);
-		}
-		List<JobMarketSnapshot> daily = new ArrayList<>(byDay.values());
-		daily.sort(Comparator.comparing(JobMarketSnapshot::getCreatedAt));
-		return daily;
-	}
-
-	private static List<JobMarketSnapshot> capToLastMonthIfNeeded(List<JobMarketSnapshot> snapshots) {
-		if (snapshots == null || snapshots.isEmpty()) {
-			return Collections.emptyList();
-		}
-		Instant latest = snapshots.get(snapshots.size() - 1).getCreatedAt();
-		Instant cutoff = latest.minusSeconds(30L * 24L * 60L * 60L);
-		Instant earliest = snapshots.get(0).getCreatedAt();
-		if (!earliest.isBefore(cutoff)) {
-			return snapshots;
-		}
-		return snapshots.stream()
-			.filter(snapshot -> !snapshot.getCreatedAt().isBefore(cutoff))
-			.toList();
-	}
-
-	private static List<String> buildAxisLabels(List<JobMarketSnapshot> snapshots) {
-		if (snapshots == null || snapshots.isEmpty()) {
-			return Collections.emptyList();
-		}
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d");
-		ZoneId zone = ZoneId.systemDefault();
-		List<String> labels = new ArrayList<>();
-		int[] idx = new int[] {0, snapshots.size() / 3, (snapshots.size() * 2) / 3, snapshots.size() - 1};
-		for (int i : idx) {
-			String label = snapshots.get(i).getCreatedAt().atZone(zone).toLocalDate().format(formatter);
-			if (labels.isEmpty() || !labels.get(labels.size() - 1).equals(label)) {
-				labels.add(label);
-			}
-		}
-		return labels;
-	}
-
 }

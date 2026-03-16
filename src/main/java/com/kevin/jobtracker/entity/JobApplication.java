@@ -26,8 +26,20 @@ public class JobApplication {
 	private String userId;
 	private Instant createdAt;
 
+	// Stamped on creation and updated on every status change; used to detect stale applications.
+	private Instant updatedAt;
+
+	// Claude-generated follow-up email draft (null until the user requests one).
+	@Column(columnDefinition = "TEXT")
+	private String followUpDraft;
+
+	@Column
+	private Instant followUpDraftGeneratedAt;
+
 	protected JobApplication() {
-		this.createdAt = Instant.now();
+		Instant now = Instant.now();
+		this.createdAt = now;
+		this.updatedAt = now;
 	}
 
 	public JobApplication(String requestKey, String companyName, String positionTitle,
@@ -40,7 +52,9 @@ public class JobApplication {
 		this.notes = notes;
 		this.source = source;
 		this.clientIp = clientIp;
-		this.createdAt = Instant.now();
+		Instant now = Instant.now();
+		this.createdAt = now;
+		this.updatedAt = now;
 	}
 
 	public String getId() { return id; }
@@ -75,4 +89,13 @@ public class JobApplication {
 
 	public Instant getCreatedAt() { return createdAt; }
 	public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+	public Instant getUpdatedAt() { return updatedAt; }
+	public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+	public String getFollowUpDraft() { return followUpDraft; }
+	public void setFollowUpDraft(String followUpDraft) { this.followUpDraft = followUpDraft; }
+
+	public Instant getFollowUpDraftGeneratedAt() { return followUpDraftGeneratedAt; }
+	public void setFollowUpDraftGeneratedAt(Instant followUpDraftGeneratedAt) { this.followUpDraftGeneratedAt = followUpDraftGeneratedAt; }
 }

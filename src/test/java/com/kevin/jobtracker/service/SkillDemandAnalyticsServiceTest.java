@@ -18,11 +18,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static com.kevin.jobtracker.service.SkillDemandAnalyticsService.ROLE_SOFTWARE_ENGINEER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,12 +33,15 @@ class SkillDemandAnalyticsServiceTest {
 	private RestTemplate restTemplate;
 
 	@Mock
+	private RestTemplate redirectRestTemplate;
+
+	@Mock
 	private SkillDemandSnapshotRepository snapshotRepository;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Test
-	void fetchAndStoreNowExtractsSkillsFromRedirectPagesAcrossMultipleAdzunaPages() throws Exception {
+	void fetchAndStoreForRoleExtractsSkillsFromRedirectPagesAcrossMultipleAdzunaPages() throws Exception {
 		SkillDemandAnalyticsService service = newService("app-id", "app-key", "id");
 
 		when(restTemplate.getForObject(argThat((URI uri) -> uri != null && uri.toString().contains("/search/1")), eq(com.fasterxml.jackson.databind.JsonNode.class)))
@@ -58,16 +60,16 @@ class SkillDemandAnalyticsServiceTest {
 		when(restTemplate.getForObject(argThat((URI uri) -> uri != null && uri.toString().contains("/search/3")), eq(com.fasterxml.jackson.databind.JsonNode.class)))
 			.thenReturn(objectMapper.readTree("{\"results\":[]}"));
 
-		when(restTemplate.getForObject(eq("https://job.example/1"), eq(String.class)))
+		when(redirectRestTemplate.getForObject(eq("https://job.example/1"), eq(String.class)))
 			.thenReturn("<html><body><section id='job-description'>Java Spring AWS and REST APIs.</section></body></html>");
-		when(restTemplate.getForObject(eq("https://job.example/2"), eq(String.class)))
+		when(redirectRestTemplate.getForObject(eq("https://job.example/2"), eq(String.class)))
 			.thenReturn("<html><body><div class='description'>Python Docker Kubernetes and SQL.</div></body></html>");
-		when(restTemplate.getForObject(eq("https://job.example/3"), eq(String.class)))
+		when(redirectRestTemplate.getForObject(eq("https://job.example/3"), eq(String.class)))
 			.thenReturn("<html><body><article class='content'>Java Kafka and PostgreSQL platform work.</article></body></html>");
 
 		when(snapshotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-		List<SkillDemandSnapshot> snapshots = service.fetchAndStoreNow();
+		List<SkillDemandSnapshot> snapshots = service.fetchAndStoreForRole(ROLE_SOFTWARE_ENGINEER);
 
 		assertThat(snapshots).hasSizeGreaterThanOrEqualTo(5);
 		assertThat(snapshots.get(0).getSampleJobs()).isEqualTo(3);
@@ -76,7 +78,7 @@ class SkillDemandAnalyticsServiceTest {
 	}
 
 	@Test
-	void fetchAndStoreNowSupportsCompositeDedupe() throws Exception {
+	void fetchAndStoreForRoleSupportsCompositeDedupe() throws Exception {
 		SkillDemandAnalyticsService service = newService("app-id", "app-key", "composite");
 
 		when(restTemplate.getForObject(argThat((URI uri) -> uri != null && uri.toString().contains("/search/1")), eq(com.fasterxml.jackson.databind.JsonNode.class)))
@@ -89,11 +91,11 @@ class SkillDemandAnalyticsServiceTest {
 				"""));
 		when(restTemplate.getForObject(argThat((URI uri) -> uri != null && uri.toString().contains("/search/2")), eq(com.fasterxml.jackson.databind.JsonNode.class)))
 			.thenReturn(objectMapper.readTree("{\"results\":[]}"));
-		when(restTemplate.getForObject(eq("https://job.example/1"), eq(String.class))).thenReturn("<html><body>Java and AWS</body></html>");
-		when(restTemplate.getForObject(eq("https://job.example/2"), eq(String.class))).thenReturn("<html><body>Python and SQL</body></html>");
+		when(redirectRestTemplate.getForObject(eq("https://job.example/1"), eq(String.class))).thenReturn("<html><body>Java and AWS</body></html>");
+		when(redirectRestTemplate.getForObject(eq("https://job.example/2"), eq(String.class))).thenReturn("<html><body>Python and SQL</body></html>");
 		when(snapshotRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-		List<SkillDemandSnapshot> snapshots = service.fetchAndStoreNow();
+		List<SkillDemandSnapshot> snapshots = service.fetchAndStoreForRole(ROLE_SOFTWARE_ENGINEER);
 
 		assertThat(snapshots).isNotEmpty();
 		assertThat(snapshots.get(0).getSampleJobs()).isEqualTo(2);
@@ -103,15 +105,17 @@ class SkillDemandAnalyticsServiceTest {
 	void latestTopSkillsReturnsRawCounts() {
 		SkillDemandAnalyticsService service = newService("app-id", "app-key", "id");
 		Instant latest = Instant.parse("2026-03-08T12:00:00Z");
-		SkillDemandSnapshot sample = new SkillDemandSnapshot("software engineer", 1, "java", 5, 100, 1, latest, null);
+		SkillDemandSnapshot sample = new SkillDemandSnapshot(ROLE_SOFTWARE_ENGINEER, 1, "java", 5, 100, 1, latest, null);
 
-		when(snapshotRepository.findTopBySkillNameNotOrderByCreatedAtDesc("__ERROR__")).thenReturn(Optional.of(sample));
-		when(snapshotRepository.findByCreatedAtOrderByRankPositionAsc(latest)).thenReturn(List.of(
-			new SkillDemandSnapshot("software engineer", 1, "java", 5, 100, 1, latest, null),
-			new SkillDemandSnapshot("software engineer", 1, "python", 4, 100, 2, latest, null)
-		));
+		when(snapshotRepository.findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(ROLE_SOFTWARE_ENGINEER, "__ERROR__"))
+			.thenReturn(Optional.of(sample));
+		when(snapshotRepository.findBySearchQueryAndCreatedAtOrderByRankPositionAsc(ROLE_SOFTWARE_ENGINEER, latest))
+			.thenReturn(List.of(
+				new SkillDemandSnapshot(ROLE_SOFTWARE_ENGINEER, 1, "java", 5, 100, 1, latest, null),
+				new SkillDemandSnapshot(ROLE_SOFTWARE_ENGINEER, 1, "python", 4, 100, 2, latest, null)
+			));
 
-		List<SkillDemandAnalyticsService.TopSkill> topSkills = service.latestTopSkills();
+		List<SkillDemandAnalyticsService.TopSkill> topSkills = service.latestTopSkills(ROLE_SOFTWARE_ENGINEER);
 
 		assertThat(topSkills).hasSize(2);
 		assertThat(topSkills.get(0).count()).isEqualTo(5);
@@ -122,26 +126,28 @@ class SkillDemandAnalyticsServiceTest {
 	void latestTopSkillsHidesNoneSentinelAndFlagsNoMatchSample() {
 		SkillDemandAnalyticsService service = newService("app-id", "app-key", "id");
 		Instant latest = Instant.parse("2026-03-08T12:00:00Z");
-		SkillDemandSnapshot sentinel = new SkillDemandSnapshot("software engineer", 1, "none", 0, 87, 1, latest, null);
+		SkillDemandSnapshot sentinel = new SkillDemandSnapshot(ROLE_SOFTWARE_ENGINEER, 1, "none", 0, 87, 1, latest, null);
 
-		when(snapshotRepository.findTopBySkillNameNotOrderByCreatedAtDesc("__ERROR__")).thenReturn(Optional.of(sentinel));
-		when(snapshotRepository.findByCreatedAtOrderByRankPositionAsc(latest)).thenReturn(List.of(sentinel));
+		when(snapshotRepository.findTopBySearchQueryAndSkillNameNotOrderByCreatedAtDesc(ROLE_SOFTWARE_ENGINEER, "__ERROR__"))
+			.thenReturn(Optional.of(sentinel));
+		when(snapshotRepository.findBySearchQueryAndCreatedAtOrderByRankPositionAsc(ROLE_SOFTWARE_ENGINEER, latest))
+			.thenReturn(List.of(sentinel));
 
-		List<SkillDemandAnalyticsService.TopSkill> topSkills = service.latestTopSkills();
+		List<SkillDemandAnalyticsService.TopSkill> topSkills = service.latestTopSkills(ROLE_SOFTWARE_ENGINEER);
 
 		assertThat(topSkills).isEmpty();
-		assertThat(service.latestNoMatchesInSample()).isTrue();
-		assertThat(service.latestSampleJobs()).isEqualTo(87);
+		assertThat(service.latestNoMatchesInSample(ROLE_SOFTWARE_ENGINEER)).isTrue();
+		assertThat(service.latestSampleJobs(ROLE_SOFTWARE_ENGINEER)).isEqualTo(87);
 	}
 
 	@Test
-	void fetchAndStoreNowStoresFailureSnapshotWhenAdzunaForbidden() {
+	void fetchAndStoreForRoleStoresFailureSnapshotWhenAdzunaForbidden() {
 		SkillDemandAnalyticsService service = newService("app-id", "app-key", "id");
 		when(restTemplate.getForObject(any(URI.class), eq(com.fasterxml.jackson.databind.JsonNode.class)))
 			.thenThrow(HttpClientErrorException.create(HttpStatus.FORBIDDEN, "Forbidden", HttpHeaders.EMPTY, new byte[0], null));
 		when(snapshotRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-		service.fetchAndStoreNow();
+		service.fetchAndStoreForRole(ROLE_SOFTWARE_ENGINEER);
 
 		ArgumentCaptor<SkillDemandSnapshot> captor = ArgumentCaptor.forClass(SkillDemandSnapshot.class);
 		verify(snapshotRepository).save(captor.capture());
@@ -152,27 +158,33 @@ class SkillDemandAnalyticsServiceTest {
 	private SkillDemandAnalyticsService newService(String appId, String appKey, String dedupeMode) {
 		return new SkillDemandAnalyticsService(
 			restTemplate,
+			redirectRestTemplate,
 			snapshotRepository,
 			"https://api.adzuna.com/v1/api/jobs/us/search",
 			appId,
 			appKey,
-			"software engineer",
-			"",
-			"date",
-			1,
-			5,
-			20,
-			0,
+			0L,    // redirectDelayMs
 			dedupeMode,
-			8,
-			true,
+			8,     // topN
+			true,  // enabled
 			"java,python,javascript,typescript,react,angular,spring,docker,kubernetes,aws,azure,sql,postgresql,mongodb,git,ci/cd,kafka,rest,graphql",
-			"js,node,nodejs",
-			"ts",
-			"k8s",
-			"postgres",
-			"ci cd,ci-cd,continuous integration,continuous delivery",
-			"c#,.net,dotnet"
+			"js,node,nodejs",   // aliasJavascript
+			"ts",               // aliasTypescript
+			"k8s",              // aliasKubernetes
+			"postgres",         // aliasPostgresql
+			"ci cd,ci-cd,continuous integration,continuous delivery", // aliasCicd
+			"c#,.net,dotnet",   // aliasCsharp
+			"golang",           // aliasGo
+			"google cloud,google cloud platform", // aliasGcp
+			"ml",               // aliasMl
+			"dl",               // aliasDl
+			"large language model,generative ai,gen ai,genai", // aliasLlm
+			"cyber security,information security,infosec,appsec", // aliasCybersecurity
+			"huggingface",      // aliasHuggingFace
+			"elastic,opensearch", // aliasElasticsearch
+			"rn",               // aliasReactNative
+			"grpc,gRPC",        // aliasGrpc
+			"cpp,c plus plus"   // aliasCpp
 		);
 	}
 }

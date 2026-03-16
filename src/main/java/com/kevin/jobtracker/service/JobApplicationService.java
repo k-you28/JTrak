@@ -26,17 +26,20 @@ public class JobApplicationService {
 	private final ApplicationMetrics metrics;
 	private final DeadLetterService deadLetterService;
 	private final String legacyOwnerEmail;
+	private final String legacyPasswordHash;
 
 	public JobApplicationService(JobApplicationRepository applicationRepository,
 	                             UserAccountRepository userAccountRepository,
 	                             ApplicationMetrics metrics,
 	                             DeadLetterService deadLetterService,
-	                             @Value("${app.ownership.legacy-email:legacy-api@jobtracker.local}") String legacyOwnerEmail) {
+	                             @Value("${app.ownership.legacy-email:legacy-api@jobtracker.local}") String legacyOwnerEmail,
+	                             @Value("${app.ownership.legacy-password-hash}") String legacyPasswordHash) {
 		this.applicationRepository = applicationRepository;
 		this.userAccountRepository = userAccountRepository;
 		this.metrics = metrics;
 		this.deadLetterService = deadLetterService;
 		this.legacyOwnerEmail = legacyOwnerEmail;
+		this.legacyPasswordHash = legacyPasswordHash;
 	}
 
 	@Transactional
@@ -110,6 +113,25 @@ public class JobApplicationService {
 		}
 	}
 
+	private static final List<String> VALID_STATUSES = List.of("APPLIED", "INTERVIEWING", "OFFER", "REJECTED");
+
+	@Transactional
+	public void updateStatus(String id, String newStatus, String ownerEmail) {
+		if (id == null || id.isBlank()) {
+			throw new IllegalArgumentException("Application id required");
+		}
+		String normalized = newStatus != null ? newStatus.trim().toUpperCase(Locale.ROOT) : "";
+		if (!VALID_STATUSES.contains(normalized)) {
+			throw new IllegalArgumentException("Invalid status: " + newStatus);
+		}
+		String ownerUserId = resolveOwnerUserId(ownerEmail);
+		JobApplication app = applicationRepository.findByIdAndUserId(id, ownerUserId)
+			.orElseThrow(() -> new IllegalArgumentException("Application not found"));
+		app.setStatus(normalized);
+		app.setUpdatedAt(Instant.now());
+		applicationRepository.save(app);
+	}
+
 	@Transactional
 	public void deleteById(String id) {
 		deleteById(id, null);
@@ -171,7 +193,7 @@ public class JobApplicationService {
 		String normalized = legacyOwnerEmail.trim().toLowerCase(Locale.ROOT);
 		return userAccountRepository.findByEmail(normalized)
 			.orElseGet(() -> {
-				UserAccount legacy = new UserAccount(normalized, "$2a$10$7EqJtq98hPqEX7fNZaFWoO6P6QF6UVx/FuWRzE7dOjIvmhjYQdkf.");
+				UserAccount legacy = new UserAccount(normalized, legacyPasswordHash);
 				legacy.setEmailVerified(true);
 				legacy.setStatus("ACTIVE");
 				return userAccountRepository.save(legacy);

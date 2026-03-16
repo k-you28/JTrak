@@ -15,9 +15,9 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.HexFormat;
 
 @Service
 public class EmailVerificationService {

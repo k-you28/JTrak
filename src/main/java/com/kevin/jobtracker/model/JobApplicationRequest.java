@@ -1,5 +1,9 @@
 package com.kevin.jobtracker.model;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDate;
 
 /**
@@ -9,12 +13,26 @@ import java.time.LocalDate;
 public class JobApplicationRequest {
 
 	private String requestKey;
+
+	@NotBlank(message = "Company name is required")
+	@Size(max = 255, message = "Company name must not exceed 255 characters")
 	private String companyName;
+
+	@NotBlank(message = "Position title is required")
+	@Size(max = 255, message = "Position title must not exceed 255 characters")
 	private String positionTitle;
+
+	@NotNull(message = "Date applied is required")
 	private LocalDate dateApplied;
-	private String status;   // APPLIED, INTERVIEWING, OFFER, REJECTED
+
+	// APPLIED, INTERVIEWING, OFFER, REJECTED
+	private String status;
+
+	@Size(max = 2000, message = "Notes must not exceed 2000 characters")
 	private String notes;
-	private String source;   // LinkedIn, company site, referral, etc.
+
+	@Size(max = 255, message = "Source must not exceed 255 characters")
+	private String source;
 
 	public String getRequestKey() { return requestKey; }
 	public void setRequestKey(String requestKey) { this.requestKey = requestKey; }
