@@ -39,6 +39,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	maxHeapSize = '1g'
 }
 
 tasks.withType(JavaCompile).configureEach {

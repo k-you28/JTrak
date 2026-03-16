@@ -25,7 +25,7 @@ import java.util.Map;
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-    "spring.datasource.url=jdbc:h2:mem:jobtracker-api-test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL",
+    "spring.datasource.url=jdbc:h2:mem:jobtracker-api-test;DB_CLOSE_DELAY=-1",
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.show-sql=false",

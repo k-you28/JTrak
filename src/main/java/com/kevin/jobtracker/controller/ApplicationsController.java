@@ -7,8 +7,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -25,24 +26,32 @@ public class ApplicationsController {
 	public ResponseEntity<JobApplication> submit(
 			@Valid @RequestBody JobApplicationRequest request,
 			HttpServletRequest httpRequest,
-			Principal principal
+			Authentication authentication
 	) {
 		String clientIp = extractClientIp(httpRequest);
-		JobApplication created = applicationService.submit(request, clientIp, principal.getName());
+		JobApplication created = applicationService.submit(request, clientIp, ownerEmail(authentication));
 		return ResponseEntity.status(HttpStatus.CREATED).body(created);
 	}
 
 	@GetMapping("/{requestKey}")
 	public ResponseEntity<JobApplication> getByRequestKey(@PathVariable("requestKey") String requestKey,
-	                                                      Principal principal) {
-		return applicationService.getByRequestKey(requestKey, principal.getName())
+	                                                      Authentication authentication) {
+		return applicationService.getByRequestKey(requestKey, ownerEmail(authentication))
 			.map(ResponseEntity::ok)
 			.orElse(ResponseEntity.notFound().build());
 	}
 
 	@GetMapping
-	public List<JobApplication> list(Principal principal) {
-		return applicationService.listAll(principal.getName());
+	public List<JobApplication> list(Authentication authentication) {
+		return applicationService.listAll(ownerEmail(authentication));
+	}
+
+	/** Returns null for anonymous/API-key requests, triggering the legacy-owner path. */
+	private static String ownerEmail(Authentication authentication) {
+		if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
+			return null;
+		}
+		return authentication.getName();
 	}
 
 	/**

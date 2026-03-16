@@ -29,7 +29,8 @@ public class SecurityConfig {
 			.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/css/**", "/register", "/login", "/verify-email", "/resend-verification", "/h2-console/**").permitAll()
-				.requestMatchers("/api/**", "/admin/api-keys/**").authenticated()
+				.requestMatchers("/api/**").permitAll()  // ApiKeyAuthenticationFilter handles auth; returns 401 for invalid keys
+			.requestMatchers("/admin/api-keys/**").authenticated()
 				.anyRequest().authenticated()
 			)
 			.formLogin(form -> form

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.lenient;
 
 import com.kevin.jobtracker.entity.JobApplication;
 import com.kevin.jobtracker.entity.UserAccount;
@@ -52,12 +53,14 @@ class JobApplicationServiceTest {
             userAccountRepository,
             metrics,
             deadLetterService,
-            "legacy-api@jobtracker.local"
+            "legacy-api@jobtracker.local",
+            "$2a$10$placeholder.hash.for.unit.tests"
         );
         legacyUser = new UserAccount("legacy-api@jobtracker.local", "hash");
         legacyUser.setId("legacy-user-id");
         legacyUser.setEmailVerified(true);
-        when(userAccountRepository.findByEmail("legacy-api@jobtracker.local")).thenReturn(Optional.of(legacyUser));
+        // lenient: some tests throw before reaching resolveOwnerUserId, so the stub may be unused
+        lenient().when(userAccountRepository.findByEmail("legacy-api@jobtracker.local")).thenReturn(Optional.of(legacyUser));
     }
 
     @Test
@@ -197,6 +200,31 @@ class JobApplicationServiceTest {
         List<JobApplication> result = service.listAll();
 
         assertThat(result).isNotNull().isEmpty();
+    }
+
+    @Test
+    void updateStatusStampsUpdatedAt() {
+        JobApplication app = new JobApplication(
+            "acme-key", "Acme", "SE", LocalDate.parse("2026-02-20"), "APPLIED", "", "", "127.0.0.1"
+        );
+        Instant before = app.getUpdatedAt();
+
+        when(applicationRepository.findByIdAndUserId("app-1", "legacy-user-id")).thenReturn(Optional.of(app));
+        when(applicationRepository.save(any(JobApplication.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.updateStatus("app-1", "INTERVIEWING", "legacy-api@jobtracker.local");
+
+        assertThat(app.getStatus()).isEqualTo("INTERVIEWING");
+        assertThat(app.getUpdatedAt()).isAfterOrEqualTo(before);
+    }
+
+    @Test
+    void updateStatusRejectsInvalidStatus() {
+        assertThatThrownBy(() -> service.updateStatus("app-1", "PENDING", "legacy-api@jobtracker.local"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Invalid status");
+
+        verify(applicationRepository, never()).save(any());
     }
 
     private static JobApplicationRequest baseRequest() {
