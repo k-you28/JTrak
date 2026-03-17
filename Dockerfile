@@ -22,7 +22,8 @@ COPY --from=build /workspace/build/libs/*.jar /app/app.jar
 USER spring
 
 EXPOSE 8081
-VOLUME ["/app/data"]
+#Commented out Docker VOLUME to make repo compatible with Railway
+#VOLUME ["/app/data"]
 
 ENV JAVA_OPTS=""
 
