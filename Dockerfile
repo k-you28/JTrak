@@ -25,5 +25,6 @@ EXPOSE 8081
 VOLUME ["/app/data"]
 
 ENV JAVA_OPTS=""
+ENV SPRING_PROFILES_ACTIVE="prod"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

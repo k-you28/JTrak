@@ -33,7 +33,7 @@ public class EmailVerificationService {
 	public EmailVerificationService(EmailVerificationTokenRepository tokenRepository,
 	                                UserAccountRepository userAccountRepository,
 	                                EmailSender emailSender,
-	                                @Value("${app.verification.base-url:http://localhost:8081}") String baseUrl) {
+	                                @Value("${app.verification.base-url}") String baseUrl) {
 		this.tokenRepository = tokenRepository;
 		this.userAccountRepository = userAccountRepository;
 		this.emailSender = emailSender;

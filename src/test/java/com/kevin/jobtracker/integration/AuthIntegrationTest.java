@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
 	"spring.datasource.url=jdbc:h2:mem:jobtracker-auth-test;DB_CLOSE_DELAY=-1",
 	"spring.datasource.driver-class-name=org.h2.Driver",
-	"spring.jpa.hibernate.ddl-auto=create-drop",
+	"spring.jpa.hibernate.ddl-auto=validate",
 	"spring.jpa.show-sql=false",
 	"app.market.enabled=false",
 	"app.news.enabled=false",
