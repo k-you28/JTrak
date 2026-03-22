@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
@@ -27,7 +26,9 @@ public class UserResume {
 	@Column(nullable = false, length = 255)
 	private String fileName;
 
-	@Lob
+	// No @Lob: @Lob on byte[] maps to PostgreSQL Large Object (OID), not BYTEA.
+	// Plain byte[] maps to VARBINARY in Hibernate, which is compatible with BYTEA in both
+	// H2 (VARBINARY) and PostgreSQL (BINARY), satisfying schema validation on both databases.
 	@Column(nullable = false)
 	private byte[] pdfBytes;
 

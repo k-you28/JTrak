@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-	"spring.datasource.url=jdbc:h2:mem:jobtracker-auth-test;DB_CLOSE_DELAY=-1",
+	"spring.datasource.url=jdbc:h2:mem:jobtracker-auth-test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DEFAULT_NULL_ORDERING=HIGH",
 	"spring.datasource.driver-class-name=org.h2.Driver",
 	"spring.jpa.hibernate.ddl-auto=validate",
 	"spring.jpa.show-sql=false",
