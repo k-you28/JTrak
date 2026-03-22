@@ -73,7 +73,7 @@ CREATE TABLE user_resumes (
     id            VARCHAR(255) NOT NULL PRIMARY KEY,
     user_id       VARCHAR(36)  NOT NULL,
     file_name     VARCHAR(255) NOT NULL,
-    pdf_bytes     BLOB         NOT NULL,
+    pdf_bytes     BYTEA        NOT NULL,
     uploaded_at   TIMESTAMP    NOT NULL,
     analysis_text TEXT,
     analyzed_at   TIMESTAMP,
