@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @TestPropertySource(properties = {
     "spring.datasource.url=jdbc:h2:mem:jobtracker-followup-test;DB_CLOSE_DELAY=-1",
     "spring.datasource.driver-class-name=org.h2.Driver",
-    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.jpa.hibernate.ddl-auto=validate",
     "spring.jpa.show-sql=false",
     "app.market.enabled=false",
     "app.news.enabled=false",

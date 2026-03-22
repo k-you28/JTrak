@@ -26,9 +26,26 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
 			.csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
-			.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+			.headers(headers -> headers
+				// Allow H2 console to render in frames (same-origin only); deny for everything else
+				.frameOptions(frame -> frame.sameOrigin())
+				// Prevent browsers from MIME-sniffing the content type
+				.contentTypeOptions(ct -> {})
+				// Enable browser XSS filter
+				.xssProtection(xss -> {})
+				// HSTS: browsers use HTTPS exclusively for 1 year (including subdomains)
+				.httpStrictTransportSecurity(hsts -> hsts
+					.maxAgeInSeconds(31536000)
+					.includeSubDomains(true)
+				)
+				// Content Security Policy: restrict resource loading to same origin
+				.contentSecurityPolicy(csp -> csp
+					.policyDirectives("default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'")
+				)
+			)
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers("/css/**", "/register", "/login", "/verify-email", "/resend-verification", "/h2-console/**").permitAll()
+				.requestMatchers("/actuator/health").permitAll()  // Allow Railway health probes without auth
 				.requestMatchers("/api/**").permitAll()  // ApiKeyAuthenticationFilter handles auth; returns 401 for invalid keys
 			.requestMatchers("/admin/api-keys/**").authenticated()
 				.anyRequest().authenticated()
