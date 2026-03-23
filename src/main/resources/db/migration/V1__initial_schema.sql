@@ -1,5 +1,6 @@
 -- V1: Initial schema matching Hibernate-generated tables from entity classes.
--- Supports both H2 (dev/test) and PostgreSQL (production).
+-- Supports both H2 2.x (dev/test) and PostgreSQL (production).
+-- TIMESTAMP WITH TIME ZONE used throughout: Hibernate 6 maps java.time.Instant to TIMESTAMPTZ.
 
 -- ── users ────────────────────────────────────────────────────────────────────
 
@@ -9,8 +10,8 @@ CREATE TABLE users (
     password_hash   VARCHAR(255) NOT NULL,
     email_verified  BOOLEAN      NOT NULL DEFAULT FALSE,
     status          VARCHAR(255) NOT NULL DEFAULT 'ACTIVE',
-    created_at      TIMESTAMP    NOT NULL,
-    updated_at      TIMESTAMP    NOT NULL,
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT uq_users_email UNIQUE (email)
 );
 
@@ -27,10 +28,10 @@ CREATE TABLE job_applications (
     source                      VARCHAR(255),
     client_ip                   VARCHAR(255),
     user_id                     VARCHAR(255),
-    created_at                  TIMESTAMP,
-    updated_at                  TIMESTAMP,
+    created_at                  TIMESTAMP WITH TIME ZONE,
+    updated_at                  TIMESTAMP WITH TIME ZONE,
     follow_up_draft             TEXT,
-    follow_up_draft_generated_at TIMESTAMP,
+    follow_up_draft_generated_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT uq_job_applications_request_key UNIQUE (request_key)
 );
 
@@ -47,8 +48,8 @@ CREATE TABLE api_keys (
     key_value    VARCHAR(255) NOT NULL,
     name         VARCHAR(255),
     active       BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at   TIMESTAMP,
-    last_used_at TIMESTAMP,
+    created_at   TIMESTAMP WITH TIME ZONE,
+    last_used_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT uq_api_keys_key_value UNIQUE (key_value)
 );
 
@@ -58,9 +59,9 @@ CREATE TABLE email_verification_tokens (
     id          VARCHAR(255) NOT NULL PRIMARY KEY,
     user_id     VARCHAR(255) NOT NULL,
     token_hash  VARCHAR(255) NOT NULL,
-    expires_at  TIMESTAMP    NOT NULL,
-    used_at     TIMESTAMP,
-    created_at  TIMESTAMP    NOT NULL,
+    expires_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+    used_at     TIMESTAMP WITH TIME ZONE,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT uq_evt_token_hash UNIQUE (token_hash)
 );
 
@@ -74,9 +75,9 @@ CREATE TABLE user_resumes (
     user_id       VARCHAR(36)  NOT NULL,
     file_name     VARCHAR(255) NOT NULL,
     pdf_bytes     BYTEA        NOT NULL,
-    uploaded_at   TIMESTAMP    NOT NULL,
+    uploaded_at   TIMESTAMP WITH TIME ZONE NOT NULL,
     analysis_text TEXT,
-    analyzed_at   TIMESTAMP,
+    analyzed_at   TIMESTAMP WITH TIME ZONE,
     CONSTRAINT uq_user_resumes_user_id UNIQUE (user_id)
 );
 
@@ -88,7 +89,7 @@ CREATE TABLE job_market_snapshots (
     page_start    INTEGER      NOT NULL,
     page_end      INTEGER      NOT NULL,
     total_jobs    INTEGER      NOT NULL,
-    created_at    TIMESTAMP    NOT NULL,
+    created_at    TIMESTAMP WITH TIME ZONE NOT NULL,
     error_message VARCHAR(1024)
 );
 
@@ -105,7 +106,7 @@ CREATE TABLE skill_demand_snapshots (
     occurrence_count INTEGER      NOT NULL,
     sample_jobs      INTEGER      NOT NULL,
     rank_position    INTEGER      NOT NULL,
-    created_at       TIMESTAMP    NOT NULL,
+    created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
     error_message    VARCHAR(1024)
 );
 
@@ -120,5 +121,5 @@ CREATE TABLE dead_letter_events (
     client_ip      VARCHAR(255),
     payload        VARCHAR(2000),
     failure_reason VARCHAR(255),
-    failed_at      TIMESTAMP
+    failed_at      TIMESTAMP WITH TIME ZONE
 );
