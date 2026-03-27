@@ -18,3 +18,4 @@ src/main/resources/application-local.properties
 
 # Local API secrets (not committed)
 config/secrets.properties
+

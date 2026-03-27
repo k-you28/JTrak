@@ -18,6 +18,11 @@ repositories {
 	mavenCentral()
 }
 
+// Apache PDFBox and POI pull in commons-logging; Spring Boot uses spring-jcl instead.
+configurations.all {
+	exclude group: 'commons-logging', module: 'commons-logging'
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
