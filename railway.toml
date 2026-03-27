@@ -1,0 +1,9 @@
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+# Spring Boot Actuator health endpoint — Railway uses this for deployment health checks
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

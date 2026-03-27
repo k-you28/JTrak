@@ -47,7 +47,7 @@ public class UserAccountService implements UserDetailsService {
 		UserAccount account = userAccountRepository.findByEmail(normalizedEmail)
 			.orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
 
-		boolean enabled = "ACTIVE".equalsIgnoreCase(account.getStatus()) && account.isEmailVerified();
+		boolean enabled = "ACTIVE".equalsIgnoreCase(account.getStatus());
 
 		return User.withUsername(account.getEmail())
 			.password(account.getPasswordHash())

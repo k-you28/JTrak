@@ -44,7 +44,7 @@ public class SecurityConfig {
 				)
 			)
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/css/**", "/register", "/login", "/verify-email", "/resend-verification", "/h2-console/**").permitAll()
+				.requestMatchers("/css/**", "/register", "/login", "/h2-console/**").permitAll()
 				.requestMatchers("/actuator/health").permitAll()  // Allow Railway health probes without auth
 				.requestMatchers("/api/**").permitAll()  // ApiKeyAuthenticationFilter handles auth; returns 401 for invalid keys
 			.requestMatchers("/admin/api-keys/**").authenticated()
