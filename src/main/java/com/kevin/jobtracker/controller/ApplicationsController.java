@@ -11,6 +11,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/applications")
@@ -44,6 +45,32 @@ public class ApplicationsController {
 	@GetMapping
 	public List<JobApplication> list(Authentication authentication) {
 		return applicationService.listAll(ownerEmail(authentication));
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteById(@PathVariable("id") String id, Authentication authentication) {
+		String email = ownerEmail(authentication);
+		if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		try {
+			applicationService.deleteById(id, email);
+			return ResponseEntity.noContent().build();
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.notFound().build();
+		}
+	}
+
+	@PatchMapping("/{id}/status")
+	public ResponseEntity<Void> updateStatus(@PathVariable("id") String id,
+	                                          @RequestBody Map<String, String> body,
+	                                          Authentication authentication) {
+		String email = ownerEmail(authentication);
+		if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		try {
+			applicationService.updateStatus(id, body.get("status"), email);
+			return ResponseEntity.noContent().build();
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().build();
+		}
 	}
 
 	/** Returns null for anonymous/API-key requests, triggering the legacy-owner path. */
