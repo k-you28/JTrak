@@ -27,20 +27,6 @@
 
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-    <!-- ── Resume Auto-Fill ── -->
-    <section class="panel panel-content">
-      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;">
-        <h3 style="margin:0;font-size:1rem;">Auto-fill from Resume</h3>
-        <span style="font-size:0.7rem;background:var(--accent,#6366f1);color:#fff;padding:0.15rem 0.55rem;border-radius:9999px;font-weight:700;letter-spacing:0.03em;">AI</span>
-      </div>
-      <p style="margin:0 0 0.9rem;font-size:0.85rem;color:var(--muted);">Upload your resume (PDF or DOCX) and AI will pre-fill the fields below. Review everything before saving.</p>
-      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-        <input type="file" id="resumeFile" accept=".pdf,.docx" style="flex:1;min-width:0;"/>
-        <button type="button" id="parseResumeBtn" class="btn btn-primary" onclick="parseResume()">Parse Resume</button>
-      </div>
-      <div id="resumeStatus" style="display:none;margin-top:0.75rem;"></div>
-    </section>
-
     <section class="panel panel-content">
       <form method="post" th:action="@{/add}" th:object="${application}" class="form-grid">
 
