@@ -1,25 +1,24 @@
 package com.kevin.jobtracker.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.kevin.jobtracker.entity.JobApplication;
 import com.kevin.jobtracker.entity.UserAccount;
@@ -58,7 +57,6 @@ class JobApplicationServiceTest {
         );
         legacyUser = new UserAccount("legacy-api@jobtracker.local", "hash");
         legacyUser.setId("legacy-user-id");
-        legacyUser.setEmailVerified(true);
         // lenient: some tests throw before reaching resolveOwnerUserId, so the stub may be unused
         lenient().when(userAccountRepository.findByEmail("legacy-api@jobtracker.local")).thenReturn(Optional.of(legacyUser));
     }
