@@ -1,9 +1,10 @@
 package com.kevin.jobtracker.integration;
 
-import com.kevin.jobtracker.entity.JobApplication;
-import com.kevin.jobtracker.entity.UserAccount;
-import com.kevin.jobtracker.repository.JobApplicationRepository;
-import com.kevin.jobtracker.repository.UserAccountRepository;
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,16 +14,15 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDate;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.kevin.jobtracker.entity.JobApplication;
+import com.kevin.jobtracker.entity.UserAccount;
+import com.kevin.jobtracker.repository.JobApplicationRepository;
+import com.kevin.jobtracker.repository.UserAccountRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -54,11 +54,9 @@ class WebUiOwnershipIntegrationTest {
 		userAccountRepository.deleteAll();
 
 		UserAccount userA = new UserAccount("student@example.com", "hash");
-		userA.setEmailVerified(true);
 		userA = userAccountRepository.save(userA);
 
 		UserAccount userB = new UserAccount("other@example.com", "hash");
-		userB.setEmailVerified(true);
 		userB = userAccountRepository.save(userB);
 
 		JobApplication ownApp = new JobApplication(
