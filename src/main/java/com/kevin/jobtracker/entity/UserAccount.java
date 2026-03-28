@@ -26,9 +26,6 @@ public class UserAccount {
 	private String passwordHash;
 
 	@Column(nullable = false)
-	private boolean emailVerified = false;
-
-	@Column(nullable = false)
 	private String status = "ACTIVE";
 
 	@Column(nullable = false)
@@ -78,14 +75,6 @@ public class UserAccount {
 
 	public void setPasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
-	}
-
-	public boolean isEmailVerified() {
-		return emailVerified;
-	}
-
-	public void setEmailVerified(boolean emailVerified) {
-		this.emailVerified = emailVerified;
 	}
 
 	public String getStatus() {
