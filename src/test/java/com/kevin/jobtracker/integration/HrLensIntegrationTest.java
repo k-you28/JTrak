@@ -1,23 +1,10 @@
 package com.kevin.jobtracker.integration;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import java.io.ByteArrayOutputStream;
 
-import com.kevin.jobtracker.entity.UserAccount;
-import com.kevin.jobtracker.entity.UserResume;
-import com.kevin.jobtracker.repository.JobApplicationRepository;
-import com.kevin.jobtracker.repository.UserAccountRepository;
-import com.kevin.jobtracker.repository.UserResumeRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,8 +12,21 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.kevin.jobtracker.entity.UserAccount;
+import com.kevin.jobtracker.entity.UserResume;
+import com.kevin.jobtracker.repository.JobApplicationRepository;
+import com.kevin.jobtracker.repository.UserAccountRepository;
+import com.kevin.jobtracker.repository.UserResumeRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,7 +56,6 @@ class HrLensIntegrationTest {
         userResumeRepository.deleteAll();
         userAccountRepository.deleteAll();
         UserAccount user = new UserAccount(USER_EMAIL, "hash");
-        user.setEmailVerified(true);
         userAccountRepository.save(user);
     }
 

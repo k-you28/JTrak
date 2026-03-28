@@ -194,7 +194,6 @@ public class JobApplicationService {
 		return userAccountRepository.findByEmail(normalized)
 			.orElseGet(() -> {
 				UserAccount legacy = new UserAccount(normalized, legacyPasswordHash);
-				legacy.setEmailVerified(true);
 				legacy.setStatus("ACTIVE");
 				return userAccountRepository.save(legacy);
 			});

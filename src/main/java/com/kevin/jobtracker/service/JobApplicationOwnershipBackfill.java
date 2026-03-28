@@ -37,7 +37,6 @@ public class JobApplicationOwnershipBackfill {
 		UserAccount legacy = userAccountRepository.findByEmail(normalized)
 			.orElseGet(() -> {
 				UserAccount account = new UserAccount(normalized, "$2a$10$7EqJtq98hPqEX7fNZaFWoO6P6QF6UVx/FuWRzE7dOjIvmhjYQdkf.");
-				account.setEmailVerified(true);
 				account.setStatus("ACTIVE");
 				return userAccountRepository.save(account);
 			});
