@@ -64,29 +64,27 @@
               </tr>
             </thead>
             <tbody>
-              <tr th:each="app : ${applications}">
+              <tr th:each="app : ${applications}" th:id="'row-' + ${app.id}">
                 <td>
-                  <form th:action="@{/delete/{id}(id=${app.id})}" method="post">
-                    <button type="submit" class="btn btn-danger" title="Delete application">✕</button>
-                  </form>
+                  <button type="button" class="btn btn-danger" title="Delete application"
+                          th:data-app-id="${app.id}"
+                          onclick="deleteApp(this.dataset.appId)">✕</button>
                 </td>
                 <td th:text="${app.companyName}">Company</td>
                 <td th:text="${app.positionTitle}">Position</td>
                 <td th:text="${app.dateApplied}">Date</td>
                 <td>
-                  <form th:action="@{/update-status/{id}(id=${app.id})}" method="post" class="status-form">
-                    <input type="hidden" name="redirectTo" value="/"/>
-                    <select name="status"
-                            class="status-select"
-                            th:classappend="' status-' + ${#strings.toLowerCase(app.status)}"
-                            th:value="${app.status}"
-                            onchange="this.className='status-select status-'+this.value.toLowerCase(); this.form.submit()">
-                      <option value="APPLIED"       th:selected="${app.status == 'APPLIED'}">Applied</option>
-                      <option value="INTERVIEWING"  th:selected="${app.status == 'INTERVIEWING'}">Interviewing</option>
-                      <option value="OFFER"         th:selected="${app.status == 'OFFER'}">Offer</option>
-                      <option value="REJECTED"      th:selected="${app.status == 'REJECTED'}">Rejected</option>
-                    </select>
-                  </form>
+                  <select name="status"
+                          class="status-select"
+                          th:classappend="' status-' + ${#strings.toLowerCase(app.status)}"
+                          th:value="${app.status}"
+                          th:data-app-id="${app.id}"
+                          onchange="this.className='status-select status-'+this.value.toLowerCase(); updateAppStatus(this)">
+                    <option value="APPLIED"       th:selected="${app.status == 'APPLIED'}">Applied</option>
+                    <option value="INTERVIEWING"  th:selected="${app.status == 'INTERVIEWING'}">Interviewing</option>
+                    <option value="OFFER"         th:selected="${app.status == 'OFFER'}">Offer</option>
+                    <option value="REJECTED"      th:selected="${app.status == 'REJECTED'}">Rejected</option>
+                  </select>
                 </td>
                 <td th:text="${app.source} ?: 'Direct'">Source</td>
                 <td>
@@ -394,6 +392,60 @@
       var btn = document.getElementById('theme-toggle');
       if (btn) btn.textContent = isDark ? '☀️' : '🌙';
     })();
+
+    function deleteApp(id) {
+      fetch('/api/applications/' + id, { method: 'DELETE' })
+        .then(function(res) {
+          if (res.ok) {
+            var row = document.getElementById('row-' + id);
+            if (row) row.remove();
+            var kpiEl = document.querySelector('.kpi-value');
+            if (kpiEl) kpiEl.textContent = Math.max(0, (parseInt(kpiEl.textContent, 10) || 0) - 1);
+            var tbody = document.querySelector('tbody');
+            if (tbody && tbody.querySelectorAll('tr[id]').length === 0) {
+              var emptyRow = document.createElement('tr');
+              emptyRow.innerHTML = '<td colspan="7"><div class="empty-state">' +
+                '<span style="font-size:2rem;display:block;margin-bottom:0.5rem;opacity:0.35;">📋</span>' +
+                'No applications yet.<p>Add your first role above to start tracking your progress.</p>' +
+                '</div></td>';
+              tbody.appendChild(emptyRow);
+            }
+            showFlash('Application deleted.');
+          } else {
+            showFlash('Delete failed. Please try again.', true);
+          }
+        })
+        .catch(function() { showFlash('Delete failed. Please try again.', true); });
+    }
+
+    function updateAppStatus(selectEl) {
+      var id = selectEl.dataset.appId;
+      var status = selectEl.value;
+      fetch('/api/applications/' + id + '/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: status })
+      })
+        .then(function(res) {
+          if (res.ok) {
+            showFlash('Status updated.');
+          } else {
+            showFlash('Status update failed. Please try again.', true);
+          }
+        })
+        .catch(function() { showFlash('Status update failed. Please try again.', true); });
+    }
+
+    function showFlash(msg, isError) {
+      var existing = document.querySelector('.notice.ajax-flash');
+      if (existing) existing.remove();
+      var p = document.createElement('p');
+      p.className = 'notice ' + (isError ? 'error' : 'success') + ' ajax-flash';
+      p.textContent = msg;
+      var toolbar = document.querySelector('.toolbar');
+      if (toolbar) toolbar.parentNode.insertBefore(p, toolbar);
+      setTimeout(function() { if (p.parentNode) p.remove(); }, 3000);
+    }
   </script>
 </body>
 </html>

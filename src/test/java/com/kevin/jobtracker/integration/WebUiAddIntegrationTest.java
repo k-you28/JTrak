@@ -66,8 +66,7 @@ class WebUiAddIntegrationTest {
         mockMvc.perform(get("/"))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Acme")))
-            .andExpect(content().string(org.hamcrest.Matchers.not(
-                org.hamcrest.Matchers.containsString("No applications yet"))));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Software Engineer")));
     }
 
     @Test
