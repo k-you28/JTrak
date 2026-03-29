@@ -43,321 +43,331 @@
       </div>
     </div>
 
-    <!-- ── Applications table ── -->
-    <section class="panel table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 44px;"></th>
-            <th>Company</th>
-            <th>Position</th>
-            <th>Date Applied</th>
-            <th>Status</th>
-            <th>Source</th>
-            <th>Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr th:each="app : ${applications}">
-            <td>
-              <form th:action="@{/delete/{id}(id=${app.id})}" method="post">
-                <button type="submit" class="btn btn-danger" title="Delete application">✕</button>
-              </form>
-            </td>
-            <td th:text="${app.companyName}">Company</td>
-            <td th:text="${app.positionTitle}">Position</td>
-            <td th:text="${app.dateApplied}">Date</td>
-            <td>
-              <form th:action="@{/update-status/{id}(id=${app.id})}" method="post" class="status-form">
-                <input type="hidden" name="redirectTo" value="/"/>
-                <select name="status"
-                        class="status-select"
-                        th:classappend="' status-' + ${#strings.toLowerCase(app.status)}"
-                        th:value="${app.status}"
-                        onchange="this.className='status-select status-'+this.value.toLowerCase(); this.form.submit()">
-                  <option value="APPLIED"       th:selected="${app.status == 'APPLIED'}">Applied</option>
-                  <option value="INTERVIEWING"  th:selected="${app.status == 'INTERVIEWING'}">Interviewing</option>
-                  <option value="OFFER"         th:selected="${app.status == 'OFFER'}">Offer</option>
-                  <option value="REJECTED"      th:selected="${app.status == 'REJECTED'}">Rejected</option>
-                </select>
-              </form>
-            </td>
-            <td th:text="${app.source} ?: 'Direct'">Source</td>
-            <td>
-              <a class="link"
-                 th:href="${app.id != null and !#strings.isEmpty(app.id)} ? @{/view/{id}(id=${app.id})} : @{/view/key/{requestKey}(requestKey=${app.requestKey})}">
-                View Details →
-              </a>
-            </td>
-          </tr>
-          <tr th:if="${applications == null or #lists.isEmpty(applications)}">
-            <td colspan="7">
-              <div class="empty-state">
-                <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.35;">📋</span>
-                No applications yet.
-                <p>Add your first role above to start tracking your progress.</p>
+    <!-- ── Two-column layout: main content + market intelligence sidebar ── -->
+    <div class="content-layout">
+
+      <!-- ── Main column ── -->
+      <div class="main-column">
+
+        <!-- ── Applications table ── -->
+        <section class="panel table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 44px;"></th>
+                <th>Company</th>
+                <th>Position</th>
+                <th>Date Applied</th>
+                <th>Status</th>
+                <th>Source</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="app : ${applications}">
+                <td>
+                  <form th:action="@{/delete/{id}(id=${app.id})}" method="post">
+                    <button type="submit" class="btn btn-danger" title="Delete application">✕</button>
+                  </form>
+                </td>
+                <td th:text="${app.companyName}">Company</td>
+                <td th:text="${app.positionTitle}">Position</td>
+                <td th:text="${app.dateApplied}">Date</td>
+                <td>
+                  <form th:action="@{/update-status/{id}(id=${app.id})}" method="post" class="status-form">
+                    <input type="hidden" name="redirectTo" value="/"/>
+                    <select name="status"
+                            class="status-select"
+                            th:classappend="' status-' + ${#strings.toLowerCase(app.status)}"
+                            th:value="${app.status}"
+                            onchange="this.className='status-select status-'+this.value.toLowerCase(); this.form.submit()">
+                      <option value="APPLIED"       th:selected="${app.status == 'APPLIED'}">Applied</option>
+                      <option value="INTERVIEWING"  th:selected="${app.status == 'INTERVIEWING'}">Interviewing</option>
+                      <option value="OFFER"         th:selected="${app.status == 'OFFER'}">Offer</option>
+                      <option value="REJECTED"      th:selected="${app.status == 'REJECTED'}">Rejected</option>
+                    </select>
+                  </form>
+                </td>
+                <td th:text="${app.source} ?: 'Direct'">Source</td>
+                <td>
+                  <a class="link"
+                     th:href="${app.id != null and !#strings.isEmpty(app.id)} ? @{/view/{id}(id=${app.id})} : @{/view/key/{requestKey}(requestKey=${app.requestKey})}">
+                    View Details →
+                  </a>
+                </td>
+              </tr>
+              <tr th:if="${applications == null or #lists.isEmpty(applications)}">
+                <td colspan="7">
+                  <div class="empty-state">
+                    <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.35;">📋</span>
+                    No applications yet.
+                    <p>Add your first role above to start tracking your progress.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- ── Needs Attention ── -->
+        <div th:if="${staleApps != null and not #lists.isEmpty(staleApps)}"
+             class="insights-section-header followup-header">
+          Needs Attention
+          <span class="followup-badge" th:text="${#lists.size(staleApps)}">0</span>
+        </div>
+
+        <section th:if="${staleApps != null and not #lists.isEmpty(staleApps)}"
+                 class="panel followup-panel">
+          <p class="followup-intro">
+            These applications have had no status update in 5+ days.
+            Generate a professional follow-up email to keep momentum going.
+          </p>
+
+          <div th:each="item : ${staleApps}" class="followup-item">
+            <div class="followup-item-header">
+              <div class="followup-item-meta">
+                <span class="followup-company" th:text="${item.companyName}">Company</span>
+                <span class="followup-position" th:text="${item.positionTitle}">Position</span>
+                <span th:class="${'followup-status status-badge status-' + #strings.toLowerCase(item.status)}"
+                      th:text="${item.status}">APPLIED</span>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+              <div class="followup-item-age">
+                <span th:text="${item.daysStale + ' days stale'}">5 days stale</span>
+              </div>
+            </div>
 
-    <!-- ── Market Intelligence (supplementary) ── -->
-    <div class="insights-section-header">Market Intelligence</div>
+            <!-- Draft (if already generated) -->
+            <div class="followup-draft-wrap" th:if="${item.hasDraft()}">
+              <div class="followup-draft-meta">
+                Draft generated <span th:text="${item.draftGeneratedAt}">Mar 15, 2026</span>
+                &mdash;
+                <button type="button" class="followup-copy-btn"
+                        th:onclick="|copyDraft('draft-${item.appId}')|">Copy</button>
+              </div>
+              <pre class="followup-draft" th:id="|draft-${item.appId}|"
+                   th:text="${item.draft}"></pre>
+              <!-- Regenerate -->
+              <form th:action="@{/follow-up/{id}/draft(id=${item.appId})}" method="post"
+                    class="followup-regen-form">
+                <button type="submit" class="btn btn-secondary followup-regen-btn">↻ Regenerate</button>
+              </form>
+            </div>
 
-    <div class="insights-row">
-      <section class="panel market-panel">
-        <div class="market-head">
-          <h2>Software Market Health Trend</h2>
-          <span>
-            Relative signal:
-            <strong th:if="${latestMarketSnapshot != null}"
-                    th:class="${marketHealthClass}"
-                    th:text="${marketHealthLabel}">OK</strong>
-            <strong th:if="${latestMarketSnapshot == null}" class="health-ok">Waiting</strong>
-          </span>
-        </div>
-        <div class="market-meta" th:if="${latestMarketSnapshot != null}">
-          <span th:text="${'Last updated: ' + marketLastUpdated}">Last updated: n/a</span>
-        </div>
-        <div>
-          <div class="trend-line-wrap" th:if="${marketTrendSnapshots != null and !#lists.isEmpty(marketTrendSnapshots)}">
-            <svg viewBox="0 0 360 120" class="trend-line-svg" preserveAspectRatio="none" role="img" aria-label="External jobs trend">
-              <polyline points="10,110 350,10" class="trend-line" th:classappend="${' ' + marketHealthClass}" th:attr="points=${marketTrendPoints}"></polyline>
-            </svg>
+            <!-- No draft yet -->
+            <form th:if="${!item.hasDraft()}"
+                  th:action="@{/follow-up/{id}/draft(id=${item.appId})}" method="post"
+                  class="followup-generate-form">
+              <button type="submit" class="btn btn-primary followup-generate-btn">
+                Generate Follow-Up Email
+              </button>
+            </form>
           </div>
-          <div class="trend-axis" th:if="${marketTrendAxisLabels != null and !#lists.isEmpty(marketTrendAxisLabels)}">
-            <span th:each="label : ${marketTrendAxisLabels}" th:text="${label}">Jan 1</span>
-          </div>
-          <p class="empty-state" th:if="${marketTrendSnapshots == null or #lists.isEmpty(marketTrendSnapshots)}">No snapshots yet. Login or wait for the scheduled poll.</p>
-        </div>
-        <p class="notice error" th:if="${latestMarketSnapshot != null and latestMarketSnapshot.errorMessage != null}" th:text="${'Last poll error: ' + latestMarketSnapshot.errorMessage}">Last poll error</p>
-      </section>
+        </section>
 
-      <section class="panel news-panel">
-        <div class="news-head">
-          <h3>Top Tech Stories</h3>
-          <span th:text="${'Updated: ' + newsLastUpdated}">Updated: n/a</span>
-        </div>
-        <ol class="news-list" th:if="${newsStories != null and !#lists.isEmpty(newsStories)}">
-          <li th:each="story : ${newsStories}">
-            <a th:href="${story.url}" target="_blank" rel="noopener noreferrer" th:text="${story.title}">Story title</a>
-            <span th:text="${'by ' + story.by + ' | score ' + story.score}">by user | score 0</span>
-          </li>
-        </ol>
-        <p class="empty-state" th:if="${newsStories == null or #lists.isEmpty(newsStories)}">No stories loaded yet.</p>
-        <p class="notice error" th:if="${newsError != null}" th:text="${'News refresh error: ' + newsError}">News refresh error</p>
-      </section>
+        <!-- ── HR Lens ── -->
+        <div class="insights-section-header">HR Lens — Resume Analysis</div>
 
-      <section class="panel skills-panel">
-        <div class="skills-head">
-          <h3>Top 8 In-Demand Skills</h3>
-          <!-- Role dropdown -->
-          <select id="skillRoleSelect" class="skills-role-select" onchange="switchSkillRole(this.value)">
-            <option th:each="roleData : ${skillRoles}"
-                    th:value="${roleData.roleId}"
-                    th:text="${roleData.label}">Software Engineer</option>
-          </select>
+        <!-- Loading overlay (shown during upload/analysis) -->
+        <div id="hr-lens-loading" class="hr-lens-loading-overlay" style="display:none">
+          <div class="hr-lens-spinner"></div>
+          <p>Analyzing your resume&hellip;</p>
+          <p class="hr-lens-loading-sub">Claude is reviewing your resume against live market data. This takes ~15 seconds.</p>
         </div>
 
-        <!-- One section per job role; only the first is visible on load -->
-        <div th:each="roleData, roleStat : ${skillRoles}"
-             th:id="'skills-' + ${roleData.roleId}"
-             class="skills-role-section"
-             th:style="${roleStat.first ? '' : 'display:none'}">
+        <section class="panel hr-lens-panel">
 
-          <!-- Meta: query + descriptions scanned -->
-          <div class="skills-meta">
-            <span class="skills-meta-item">
-              <span class="skills-meta-label">Query</span>
-              <span class="skills-meta-value" th:text="${roleData.query}">software engineer</span>
-            </span>
-            <span class="skills-meta-item">
-              <span class="skills-meta-label">Descriptions scanned</span>
-              <span class="skills-meta-value"
-                    th:text="${roleData.sampleJobs + ' across up to ' + topSkillsMaxPages + ' pages'}">0 across up to 5 pages</span>
-            </span>
-            <span class="skills-meta-item">
-              <span class="skills-meta-label">Updated</span>
-              <span class="skills-meta-value" th:text="${roleData.lastUpdated}">n/a</span>
-            </span>
-          </div>
+          <!-- Error flash -->
+          <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
 
-          <ol class="skills-list" th:if="${roleData.skills != null and !#lists.isEmpty(roleData.skills)}">
-            <li th:each="skill : ${roleData.skills}">
-              <span class="skills-rank" th:text="${skill.rank + '.'}">1.</span>
-              <span class="skills-name" th:text="${skill.skill}">java</span>
-              <span class="skills-count"
-                    th:text="${roleData.sampleJobs > 0 ? #numbers.formatDecimal(skill.count * 100.0 / roleData.sampleJobs, 1, 0) + '%' : '0%'}">0%</span>
-            </li>
-          </ol>
-          <p class="empty-state"
-             th:if="${(roleData.skills == null or #lists.isEmpty(roleData.skills)) and !roleData.noMatches}">
-            No skill snapshots yet.
-          </p>
-          <p class="empty-state"
-             th:if="${roleData.noMatches}"
-             th:text="${'No tracked skills matched the current sample across up to ' + topSkillsMaxPages + ' pages.'}">
-            No tracked skills matched the current sample.
-          </p>
-          <p class="notice error"
-             th:if="${roleData.error != null}"
-             th:text="${'Skills refresh error: ' + roleData.error}">Skills refresh error</p>
-        </div>
-
-        <script>
-          function switchSkillRole(roleId) {
-            document.querySelectorAll('.skills-role-section').forEach(function(el) {
-              el.style.display = 'none';
-            });
-            var target = document.getElementById('skills-' + roleId);
-            if (target) target.style.display = 'block';
-          }
-        </script>
-      </section>
-    </div>
-
-    <!-- ── Needs Attention ── -->
-    <div th:if="${staleApps != null and not #lists.isEmpty(staleApps)}"
-         class="insights-section-header followup-header">
-      Needs Attention
-      <span class="followup-badge" th:text="${#lists.size(staleApps)}">0</span>
-    </div>
-
-    <section th:if="${staleApps != null and not #lists.isEmpty(staleApps)}"
-             class="panel followup-panel">
-      <p class="followup-intro">
-        These applications have had no status update in 5+ days.
-        Generate a professional follow-up email to keep momentum going.
-      </p>
-
-      <div th:each="item : ${staleApps}" class="followup-item">
-        <div class="followup-item-header">
-          <div class="followup-item-meta">
-            <span class="followup-company" th:text="${item.companyName}">Company</span>
-            <span class="followup-position" th:text="${item.positionTitle}">Position</span>
-            <span th:class="${'followup-status status-badge status-' + #strings.toLowerCase(item.status)}"
-                  th:text="${item.status}">APPLIED</span>
-          </div>
-          <div class="followup-item-age">
-            <span th:text="${item.daysStale + ' days stale'}">5 days stale</span>
-          </div>
-        </div>
-
-        <!-- Draft (if already generated) -->
-        <div class="followup-draft-wrap" th:if="${item.hasDraft()}">
-          <div class="followup-draft-meta">
-            Draft generated <span th:text="${item.draftGeneratedAt}">Mar 15, 2026</span>
-            &mdash;
-            <button type="button" class="followup-copy-btn"
-                    th:onclick="|copyDraft('draft-${item.appId}')|">Copy</button>
-          </div>
-          <pre class="followup-draft" th:id="|draft-${item.appId}|"
-               th:text="${item.draft}"></pre>
-          <!-- Regenerate -->
-          <form th:action="@{/follow-up/{id}/draft(id=${item.appId})}" method="post"
-                class="followup-regen-form">
-            <button type="submit" class="btn btn-secondary followup-regen-btn">↻ Regenerate</button>
+          <!-- Upload form -->
+          <form th:action="@{/resume/upload}" method="post"
+                enctype="multipart/form-data" class="hr-lens-form"
+                onsubmit="document.getElementById('hr-lens-loading').style.display='flex'; this.querySelector('button[type=submit]').disabled=true;">
+            <label class="hr-lens-file-label">
+              <span th:if="${userResume != null}">
+                Replace resume
+                <small th:text="${'(current: ' + userResume.fileName + ')'}"></small>
+              </span>
+              <span th:if="${userResume == null}">Upload your resume (PDF only)</span>
+            </label>
+            <div class="hr-lens-controls">
+              <input type="file" name="resume" accept=".pdf,application/pdf"
+                     required class="hr-lens-file-input"/>
+              <button type="submit" class="btn btn-primary">Analyze with AI</button>
+            </div>
+            <p class="hr-lens-hint">PDF only · max 5 MB · analysis takes ~15 seconds</p>
           </form>
-        </div>
 
-        <!-- No draft yet -->
-        <form th:if="${!item.hasDraft()}"
-              th:action="@{/follow-up/{id}/draft(id=${item.appId})}" method="post"
-              class="followup-generate-form">
-          <button type="submit" class="btn btn-primary followup-generate-btn">
-            Generate Follow-Up Email
-          </button>
-        </form>
-      </div>
-    </section>
+          <!-- Structured analysis output -->
+          <div class="hr-lens-analysis" th:if="${hrLensAnalysis != null}">
+            <div class="hr-lens-analysis-meta">
+              Analysis generated <span th:text="${hrLensAnalyzedAt}">Mar 15, 2026 14:30</span>
+            </div>
 
-    <!-- ── HR Lens ── -->
-    <div class="insights-section-header">HR Lens — Resume Analysis</div>
+            <!-- Pros / Cons table -->
+            <div class="hr-lens-pros-cons">
+              <div class="hr-lens-pros">
+                <h4>Strengths</h4>
+                <ul>
+                  <li th:each="pro : ${hrLensAnalysis.pros}" th:text="${pro}">strength</li>
+                  <li th:if="${#lists.isEmpty(hrLensAnalysis.pros)}" class="hr-lens-empty-list">None identified.</li>
+                </ul>
+              </div>
+              <div class="hr-lens-cons">
+                <h4>Weaknesses</h4>
+                <ul>
+                  <li th:each="con : ${hrLensAnalysis.cons}" th:text="${con}">weakness</li>
+                  <li th:if="${#lists.isEmpty(hrLensAnalysis.cons)}" class="hr-lens-empty-list">None identified.</li>
+                </ul>
+              </div>
+            </div>
 
-    <!-- Loading overlay (shown during upload/analysis) -->
-    <div id="hr-lens-loading" class="hr-lens-loading-overlay" style="display:none">
-      <div class="hr-lens-spinner"></div>
-      <p>Analyzing your resume&hellip;</p>
-      <p class="hr-lens-loading-sub">Claude is reviewing your resume against live market data. This takes ~15 seconds.</p>
-    </div>
+            <!-- Improvements -->
+            <div class="hr-lens-improvements" th:if="${not #lists.isEmpty(hrLensAnalysis.improvements)}">
+              <h4>Recommended Improvements</h4>
+              <div th:each="item, stat : ${hrLensAnalysis.improvements}" class="hr-lens-improvement-item">
+                <span class="hr-lens-improvement-num" th:text="${stat.count + '.'}">1.</span>
+                <div>
+                  <div class="hr-lens-improvement-title" th:text="${item.title}">Title</div>
+                  <p class="hr-lens-improvement-desc" th:text="${item.description}">Description</p>
+                </div>
+              </div>
+            </div>
 
-    <section class="panel hr-lens-panel">
-
-      <!-- Error flash -->
-      <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
-
-      <!-- Upload form -->
-      <form th:action="@{/resume/upload}" method="post"
-            enctype="multipart/form-data" class="hr-lens-form"
-            onsubmit="document.getElementById('hr-lens-loading').style.display='flex'; this.querySelector('button[type=submit]').disabled=true;">
-        <label class="hr-lens-file-label">
-          <span th:if="${userResume != null}">
-            Replace resume
-            <small th:text="${'(current: ' + userResume.fileName + ')'}"></small>
-          </span>
-          <span th:if="${userResume == null}">Upload your resume (PDF only)</span>
-        </label>
-        <div class="hr-lens-controls">
-          <input type="file" name="resume" accept=".pdf,application/pdf"
-                 required class="hr-lens-file-input"/>
-          <button type="submit" class="btn btn-primary">Analyze with AI</button>
-        </div>
-        <p class="hr-lens-hint">PDF only · max 5 MB · analysis takes ~15 seconds</p>
-      </form>
-
-      <!-- Structured analysis output -->
-      <div class="hr-lens-analysis" th:if="${hrLensAnalysis != null}">
-        <div class="hr-lens-analysis-meta">
-          Analysis generated <span th:text="${hrLensAnalyzedAt}">Mar 15, 2026 14:30</span>
-        </div>
-
-        <!-- Pros / Cons table -->
-        <div class="hr-lens-pros-cons">
-          <div class="hr-lens-pros">
-            <h4>Strengths</h4>
-            <ul>
-              <li th:each="pro : ${hrLensAnalysis.pros}" th:text="${pro}">strength</li>
-              <li th:if="${#lists.isEmpty(hrLensAnalysis.pros)}" class="hr-lens-empty-list">None identified.</li>
-            </ul>
-          </div>
-          <div class="hr-lens-cons">
-            <h4>Weaknesses</h4>
-            <ul>
-              <li th:each="con : ${hrLensAnalysis.cons}" th:text="${con}">weakness</li>
-              <li th:if="${#lists.isEmpty(hrLensAnalysis.cons)}" class="hr-lens-empty-list">None identified.</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Improvements -->
-        <div class="hr-lens-improvements" th:if="${not #lists.isEmpty(hrLensAnalysis.improvements)}">
-          <h4>Recommended Improvements</h4>
-          <div th:each="item, stat : ${hrLensAnalysis.improvements}" class="hr-lens-improvement-item">
-            <span class="hr-lens-improvement-num" th:text="${stat.count + '.'}">1.</span>
-            <div>
-              <div class="hr-lens-improvement-title" th:text="${item.title}">Title</div>
-              <p class="hr-lens-improvement-desc" th:text="${item.description}">Description</p>
+            <!-- Conclusion -->
+            <div class="hr-lens-conclusion" th:if="${hrLensAnalysis.conclusion != null}">
+              <h4>Verdict</h4>
+              <p th:text="${hrLensAnalysis.conclusion}">Conclusion text</p>
             </div>
           </div>
-        </div>
 
-        <!-- Conclusion -->
-        <div class="hr-lens-conclusion" th:if="${hrLensAnalysis.conclusion != null}">
-          <h4>Verdict</h4>
-          <p th:text="${hrLensAnalysis.conclusion}">Conclusion text</p>
-        </div>
-      </div>
+          <!-- Empty state -->
+          <div class="empty-state" th:if="${hrLensAnalysis == null and userResume == null}">
+            <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.35;">🔍</span>
+            Upload your resume above for a candid recruiter-lens analysis based on your
+            real application history and live market skill demand.
+          </div>
 
-      <!-- Empty state -->
-      <div class="empty-state" th:if="${hrLensAnalysis == null and userResume == null}">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem; opacity: 0.35;">🔍</span>
-        Upload your resume above for a candid recruiter-lens analysis based on your
-        real application history and live market skill demand.
-      </div>
+        </section>
 
-    </section>
+      </div><!-- /.main-column -->
+
+      <!-- ── Market Intelligence sidebar ── -->
+      <aside class="market-sidebar">
+        <div class="insights-section-header">Market Intelligence</div>
+
+        <section class="panel market-panel">
+          <div class="market-head">
+            <h2>Market Health</h2>
+            <span>
+              <strong th:if="${latestMarketSnapshot != null}"
+                      th:class="${marketHealthClass}"
+                      th:text="${marketHealthLabel}">OK</strong>
+              <strong th:if="${latestMarketSnapshot == null}" class="health-ok">Waiting</strong>
+            </span>
+          </div>
+          <div class="market-meta" th:if="${latestMarketSnapshot != null}">
+            <span th:text="${'Updated: ' + marketLastUpdated}">Updated: n/a</span>
+          </div>
+          <div>
+            <div class="trend-line-wrap" th:if="${marketTrendSnapshots != null and !#lists.isEmpty(marketTrendSnapshots)}">
+              <svg viewBox="0 0 360 120" class="trend-line-svg" preserveAspectRatio="none" role="img" aria-label="External jobs trend">
+                <polyline points="10,110 350,10" class="trend-line" th:classappend="${' ' + marketHealthClass}" th:attr="points=${marketTrendPoints}"></polyline>
+              </svg>
+            </div>
+            <div class="trend-axis" th:if="${marketTrendAxisLabels != null and !#lists.isEmpty(marketTrendAxisLabels)}">
+              <span th:each="label : ${marketTrendAxisLabels}" th:text="${label}">Jan 1</span>
+            </div>
+            <p class="empty-state" th:if="${marketTrendSnapshots == null or #lists.isEmpty(marketTrendSnapshots)}">No snapshots yet.</p>
+          </div>
+          <p class="notice error" th:if="${latestMarketSnapshot != null and latestMarketSnapshot.errorMessage != null}" th:text="${'Last poll error: ' + latestMarketSnapshot.errorMessage}">Last poll error</p>
+        </section>
+
+        <section class="panel news-panel">
+          <div class="news-head">
+            <h3>Top Tech Stories</h3>
+            <span th:text="${'Updated: ' + newsLastUpdated}">Updated: n/a</span>
+          </div>
+          <ol class="news-list" th:if="${newsStories != null and !#lists.isEmpty(newsStories)}">
+            <li th:each="story : ${newsStories}">
+              <a th:href="${story.url}" target="_blank" rel="noopener noreferrer" th:text="${story.title}">Story title</a>
+              <span th:text="${'by ' + story.by + ' | score ' + story.score}">by user | score 0</span>
+            </li>
+          </ol>
+          <p class="empty-state" th:if="${newsStories == null or #lists.isEmpty(newsStories)}">No stories loaded yet.</p>
+          <p class="notice error" th:if="${newsError != null}" th:text="${'News refresh error: ' + newsError}">News refresh error</p>
+        </section>
+
+        <section class="panel skills-panel">
+          <div class="skills-head">
+            <h3>Top 8 In-Demand Skills</h3>
+            <!-- Role dropdown -->
+            <select id="skillRoleSelect" class="skills-role-select" onchange="switchSkillRole(this.value)">
+              <option th:each="roleData : ${skillRoles}"
+                      th:value="${roleData.roleId}"
+                      th:text="${roleData.label}">Software Engineer</option>
+            </select>
+          </div>
+
+          <!-- One section per job role; only the first is visible on load -->
+          <div th:each="roleData, roleStat : ${skillRoles}"
+               th:id="'skills-' + ${roleData.roleId}"
+               class="skills-role-section"
+               th:style="${roleStat.first ? '' : 'display:none'}">
+
+            <!-- Meta: query + descriptions scanned -->
+            <div class="skills-meta">
+              <span class="skills-meta-item">
+                <span class="skills-meta-label">Query</span>
+                <span class="skills-meta-value" th:text="${roleData.query}">software engineer</span>
+              </span>
+              <span class="skills-meta-item">
+                <span class="skills-meta-label">Scanned</span>
+                <span class="skills-meta-value"
+                      th:text="${roleData.sampleJobs + ' / ' + topSkillsMaxPages + ' pages'}">0</span>
+              </span>
+              <span class="skills-meta-item">
+                <span class="skills-meta-label">Updated</span>
+                <span class="skills-meta-value" th:text="${roleData.lastUpdated}">n/a</span>
+              </span>
+            </div>
+
+            <ol class="skills-list" th:if="${roleData.skills != null and !#lists.isEmpty(roleData.skills)}">
+              <li th:each="skill : ${roleData.skills}">
+                <span class="skills-rank" th:text="${skill.rank + '.'}">1.</span>
+                <span class="skills-name" th:text="${skill.skill}">java</span>
+                <span class="skills-count"
+                      th:text="${roleData.sampleJobs > 0 ? #numbers.formatDecimal(skill.count * 100.0 / roleData.sampleJobs, 1, 0) + '%' : '0%'}">0%</span>
+              </li>
+            </ol>
+            <p class="empty-state"
+               th:if="${(roleData.skills == null or #lists.isEmpty(roleData.skills)) and !roleData.noMatches}">
+              No skill snapshots yet.
+            </p>
+            <p class="empty-state"
+               th:if="${roleData.noMatches}"
+               th:text="${'No tracked skills matched the current sample across up to ' + topSkillsMaxPages + ' pages.'}">
+              No tracked skills matched.
+            </p>
+            <p class="notice error"
+               th:if="${roleData.error != null}"
+               th:text="${'Skills refresh error: ' + roleData.error}">Skills refresh error</p>
+          </div>
+
+          <script>
+            function switchSkillRole(roleId) {
+              document.querySelectorAll('.skills-role-section').forEach(function(el) {
+                el.style.display = 'none';
+              });
+              var target = document.getElementById('skills-' + roleId);
+              if (target) target.style.display = 'block';
+            }
+          </script>
+        </section>
+
+      </aside><!-- /.market-sidebar -->
+
+    </div><!-- /.content-layout -->
 
   </main>
   <script>
