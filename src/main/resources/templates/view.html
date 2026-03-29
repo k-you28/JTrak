@@ -26,20 +26,6 @@
         <p th:if="${jobApplication != null}" th:text="${jobApplication.companyName}">Company</p>
         <p th:if="${jobApplication == null}">Everything logged for this role in one place.</p>
       </div>
-      <div th:if="${jobApplication != null}">
-        <form th:action="@{/update-status/{id}(id=${jobApplication.id})}" method="post" class="status-form">
-          <input type="hidden" name="redirectTo" th:value="@{/view/{id}(id=${jobApplication.id})}"/>
-          <select name="status"
-                  class="status-select"
-                  th:classappend="' status-' + ${#strings.toLowerCase(jobApplication.status ?: 'applied')}"
-                  onchange="this.className='status-select status-'+this.value.toLowerCase(); this.form.submit()">
-            <option value="APPLIED"       th:selected="${jobApplication.status == 'APPLIED'}">Applied</option>
-            <option value="INTERVIEWING"  th:selected="${jobApplication.status == 'INTERVIEWING'}">Interviewing</option>
-            <option value="OFFER"         th:selected="${jobApplication.status == 'OFFER'}">Offer</option>
-            <option value="REJECTED"      th:selected="${jobApplication.status == 'REJECTED'}">Rejected</option>
-          </select>
-        </form>
-      </div>
     </section>
 
     <p th:if="${error}" class="notice error" th:text="${error}">Error</p>
