@@ -2,6 +2,13 @@
 .gradle/
 build/
 
+# Compiled output
+bin/
+
+# Archives
+*.tar.gz
+*.zip
+
 # IDE / OS
 .idea/
 *.iml
