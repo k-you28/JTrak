@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM --platform=linux/amd64 eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /workspace
 
 COPY gradlew ./
@@ -11,7 +11,7 @@ RUN chmod +x gradlew
 COPY src ./src
 RUN ./gradlew --no-daemon clean bootJar -x test
 
-FROM eclipse-temurin:17-jre-jammy AS runtime
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-jammy AS runtime
 WORKDIR /app
 
 RUN groupadd --system spring && useradd --system --gid spring spring
